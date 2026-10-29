@@ -15,6 +15,9 @@ posts/
   02-the-lab/           # build, crash, capture, open the first dump
   03-the-command-language/  # context, output, files, foreach
   04-symbols-types-addresses/  # type system, lists, dis, translation
+  05-the-panic-stack/   # panic task, exception frame, symptom vs cause
+zh/
+  posts/                # Chinese editions of the same posts
 crashlab/
   crashlab.c            # the module: a NULL deref you trigger from debugfs
   Makefile
@@ -32,6 +35,9 @@ assets/
 - `kexec-tools` and `makedumpfile` in the environment that will capture the
   dump.
 - Something disposable to panic.
+
+Each post exists in English under `posts/` and in Chinese under `zh/posts/`;
+code blocks and the diagram are shared. The landing pages switch languages.
 
 The examples were produced with kernel `7.3.0+`, `crash 9.0.3++`,
 `makedumpfile 1.7.9++`, QEMU 10.1.2 and GCC 15.2.1. Older and newer toolchains
