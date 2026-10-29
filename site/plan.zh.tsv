@@ -1,0 +1,21 @@
+part	number	slug	title
+第一部分 · 基础	01	what-crash-is	认识 crash：它需要什么
+第一部分 · 基础	02	the-lab	搭一个能崩的内核，也搭一个看得懂的 dump
+第一部分 · 基础	03	the-command-language	命令语言
+第一部分 · 基础	04	symbols-types-addresses	符号、类型与地址
+第二部分 · 读崩现场	05	the-panic-stack	恐慌栈
+第二部分 · 读崩现场	06	when-bt-lies	当 bt 说谎时
+第二部分 · 读崩现场	07	tasks-and-the-scheduler	任务与调度器
+第二部分 · 读崩现场	08	time-and-the-log	时间与日志
+第三部分 · 内存	09	the-memory-picture	内存全景
+第三部分 · 内存	10	slab-forensics	slab 取证
+第三部分 · 内存	11	pages-mappings-page-tables	页、映射与页表
+第三部分 · 内存	12	corruption-poison-search	损坏、poison 与搜索
+第四部分 · 子系统	13	locks-and-deadlocks	锁与死锁
+第四部分 · 子系统	14	interrupts-timers-per-cpu	中断、定时器与 per-CPU
+第四部分 · 子系统	15	files-mounts-ipc	文件、挂载与 IPC
+第四部分 · 子系统	16	networking-devices-block	网络、设备与块层
+第五部分 · 高级工具与收尾	17	modules-and-symbols	模块与符号
+第五部分 · 高级工具与收尾	18	gdb-extensions-bpf	gdb 模式、扩展与 bpf
+第五部分 · 高级工具与收尾	19	automation-and-triage	自动化与分诊
+第五部分 · 高级工具与收尾	20	capstone	收尾案例

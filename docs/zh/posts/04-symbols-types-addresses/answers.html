@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>符号、类型与地址 — 答案</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="答案符号类型与地址">答案：符号、类型与地址</h1>
+<h2 id="1-第二个普通对象">1. 第二个普通对象</h2>
+<p>链表头地址来自 <code>dmesg</code>，因为模块的数据符号不在 kallsyms
+里：</p>
+<pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
+<p>走一遍：</p>
+<pre><code>crash&gt; mod -S ~/crash-lab/crashlab
+crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0</code></pre>
+<p>条目依次是
+<code>root</code>（头的容器）、<code>alpha</code>、<code>beta</code>、<code>gamma</code>。打出来的是
+<code>list_head</code> 地址，减掉偏移 <code>0x20</code>
+才是对象地址：</p>
+<table>
+<thead>
+<tr>
+<th>条目</th>
+<th>node 地址</th>
+<th>对象地址</th>
+<th>名字</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>root</td>
+<td><code>ffffffffa02010e0</code></td>
+<td><code>ffffffffa02010c0</code></td>
+<td><code>root</code></td>
+</tr>
+<tr>
+<td>alpha</td>
+<td><code>ffffffffa0201040</code></td>
+<td><code>ffffffffa0201020</code></td>
+<td><code>alpha</code></td>
+</tr>
+<tr>
+<td>beta</td>
+<td><code>ffffffffa0201070</code></td>
+<td><code>ffffffffa0201050</code></td>
+<td><code>beta</code></td>
+</tr>
+<tr>
+<td>gamma</td>
+<td><code>ffffffffa02010a0</code></td>
+<td><code>ffffffffa0201080</code></td>
+<td><code>gamma</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>第二个普通对象</strong>是 <code>beta</code>：</p>
+<pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201050
+struct crashlab_obj {
+  magic = 1129070914,
+  name = &quot;beta\000\000\000\000\000\000\000\000\000\000\000&quot;,
+  value = 8192,
+  node = {
+    next = 0xffffffffa02010a0 &lt;_MODULE_DATA_START_crashlab+160&gt;,
+    prev = 0xffffffffa0201040 &lt;_MODULE_DATA_START_crashlab+64&gt;
+  }
+}</code></pre>
+<p><code>magic = 1129070914</code> 就是
+<code>0x434c4142</code>，四个字节 <code>&quot;CLAB&quot;</code>。偏移可以从
+<code>list -l crashlab_obj.node</code> 来，也可以用
+<code>p &amp;((struct crashlab_obj *)0)-&gt;node</code> 读到，两个都是
+<code>0x20</code>，只是问法不同。</p>
+<h2 id="2-虚拟地址与物理地址来回翻译">2. 虚拟地址与物理地址来回翻译</h2>
+<pre><code>crash&gt; vtop 0xffffffffa0201020
+VIRTUAL           PHYSICAL
+ffffffffa0201020  30ee020
+
+      PTE         PHYSICAL  FLAGS
+80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
+<p><strong>标志位：</strong>
+<code>PRESENT</code>（映射存在）、<code>RW</code>（可写）、<code>ACCESSED</code>、<code>DIRTY</code>、<code>GLOBAL</code>（上下文切换时不被刷掉，内核映射通常这么标）、<code>NX</code>（不可执行——这是数据页）。</p>
+<p>反着走：</p>
+<pre><code>crash&gt; ptov 0x30ee020
+ffff8880030ee020</code></pre>
+<p><strong>为什么不是你出发的那个地址：</strong> 模块地址
+<code>ffffffffa0201020</code> 和直接映射地址
+<code>ffff8880030ee020</code>
+是同一个物理页的两个虚拟映射。<code>ptov</code>
+按定义返回直接映射别名；模块映射在 vmalloc
+区。想拿回模块自己的地址，就得自己留着，或者用模块基址加偏移重新算——<code>ptov</code>
+不会帮你还原。</p>
+<p><code>pte 80000000030ee163</code> 用原始 PTE 值打出同样的标志位，所以
+PTE 如果不是从 <code>vtop</code> 得来的，就用它来核对。</p>
+<h2 id="3-定义与内容">3. 定义与内容</h2>
+<ul>
+<li><p><strong>定义：</strong>
+<code>whatis struct kmem_cache</code>，打出类型、成员及其类型、大小：</p>
+<pre><code>crash&gt; whatis struct kmem_cache
+struct kmem_cache {
+    struct slub_percpu_sheaves *cpu_sheaves;
+    slab_flags_t flags;
+    unsigned long min_partial;
+    unsigned int size;
+    ...
+}</code></pre></li>
+<li><p><strong>某个地址上的内容：</strong>
+<code>struct kmem_cache &lt;地址&gt;</code>。</p></li>
+</ul>
+<p>这正是全篇的分界：<code>whatis</code>
+回答&quot;这个类型长什么样&quot;，<code>struct</code> 回答&quot;这个对象里是什么&quot;。</p>
+<p>这个内核上还有一个枝节：<code>kmem -s</code> 拒绝遍历 slab
+链表，因为编译时没开 <code>CONFIG_SLUB_DEBUG</code>：</p>
+<pre><code>crash&gt; kmem -s
+kmem: option requires kmem_cache_node.nr_slabs member!
+(the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre>
+<p>这是配置限制，不是符号问题。缓存地址仍然可以从指向它的结构体字段读出来，<code>whatis struct kmem_cache</code>
+也照常可用。</p>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" role="img" aria-labelledby="t d">
+  <title id="t">What crash reads</title>
+  <desc id="d">Three inputs feed crash: vmlinux for symbols and types, vmcore for memory and notes, and module .ko files for module debuginfo. Below, the vmcore's ELF layout: a NOTE segment holding per-CPU registers and VMCOREINFO, and LOAD segments holding physical memory.</desc>
+
+  <style>
+    .bg   { fill: #f7f3ea; }
+    .box  { fill: #fffdf8; stroke: #8a6d3b; stroke-width: 2; rx: 8; }
+    .opt  { fill: #fffdf8; stroke: #b9a888; stroke-width: 2; stroke-dasharray: 6 5; rx: 8; }
+    .crash{ fill: #f1eadb; stroke: #22252a; stroke-width: 2.5; rx: 10; }
+    .lbl  { font: 600 18px/1.2 "Iowan Old Style", "Palatino Linotype", Georgia, serif; fill: #22252a; }
+    .sub  { font: 400 14px/1.35 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #5b5f66; }
+    .mono { font: 13px/1.35 "SFMono-Regular", Menlo, Consolas, monospace; fill: #22252a; }
+    .arrow{ stroke: #8a6d3b; stroke-width: 2.5; fill: none; marker-end: url(#h); }
+    .rule { stroke: #e2d8c3; stroke-width: 1.5; }
+    .hl   { fill: #8a6d3b; }
+  </style>
+
+  <defs>
+    <marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a6d3b"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="900" height="560"/>
+
+  <!-- inputs -->
+  <rect class="box" x="30" y="34" width="210" height="92"/>
+  <text class="lbl" x="46" y="64">vmlinux</text>
+  <text class="sub" x="46" y="86">symbols, types, line info</text>
+  <text class="sub" x="46" y="106">read from DWARF</text>
+
+  <rect class="box" x="30" y="146" width="210" height="92"/>
+  <text class="lbl" x="46" y="176">vmcore</text>
+  <text class="sub" x="46" y="198">RAM contents + notes</text>
+  <text class="sub" x="46" y="218">ELF core or kdump header</text>
+
+  <rect class="opt" x="30" y="258" width="210" height="92"/>
+  <text class="lbl" x="46" y="288">module .ko</text>
+  <text class="sub" x="46" y="310">optional: module types</text>
+  <text class="sub" x="46" y="330">and source lines</text>
+
+  <!-- crash -->
+  <rect class="crash" x="330" y="96" width="230" height="190"/>
+  <text class="lbl" x="352" y="136" style="font-size:22px">crash</text>
+  <text class="sub" x="352" y="162">embedded gdb</text>
+  <text class="sub" x="352" y="182">+ kernel-aware</text>
+  <text class="sub" x="352" y="202">command layer</text>
+  <text class="mono" x="352" y="238">bt, ps, kmem, log</text>
+  <text class="mono" x="352" y="260">struct, sym, p</text>
+
+  <path class="arrow" d="M 240 80 C 290 80 290 150 330 150"/>
+  <path class="arrow" d="M 240 192 C 290 192 290 196 330 196"/>
+  <path class="arrow" d="M 240 304 C 290 304 300 250 330 236"/>
+
+  <!-- outputs -->
+  <rect class="box" x="640" y="120" width="230" height="70"/>
+  <text class="lbl" x="656" y="150">a defensible story</text>
+  <text class="sub" x="656" y="172">what, where, which task</text>
+
+  <path class="arrow" d="M 560 160 C 595 160 605 156 640 156"/>
+
+  <!-- divider -->
+  <line class="rule" x1="30" y1="392" x2="870" y2="392"/>
+
+  <!-- vmcore layout -->
+  <text class="sub" x="30" y="424" style="font-size:15px; font-weight:600;">inside a vmcore (ELF form)</text>
+
+  <rect class="box" x="30" y="440" width="120" height="86"/>
+  <text class="mono" x="44" y="468">ELF header</text>
+  <text class="sub" x="44" y="490">e_type = CORE</text>
+
+  <rect class="box" x="166" y="440" width="322" height="86"/>
+  <text class="mono" x="180" y="462">PT_NOTE</text>
+  <text class="sub" x="180" y="483">NT_PRSTATUS per CPU: registers</text>
+  <text class="sub" x="180" y="502">VMCOREINFO: release, build-id,</text>
+  <text class="sub" x="180" y="521">page size, symbol addresses</text>
+
+  <rect class="box" x="504" y="440" width="366" height="86"/>
+  <text class="mono" x="518" y="462">PT_LOAD &#215; N</text>
+  <text class="sub" x="518" y="483">physical memory ranges, one segment each</text>
+  <text class="sub" x="518" y="502">0x000000-0x030000, 0x050000-0x0a0000, &#8230;</text>
+  <text class="sub" x="518" y="521">2 GB of guest RAM in our run</text>
+
+  <path class="arrow" d="M 150 483 L 166 483"/>
+  <path class="arrow" d="M 488 483 L 504 483"/>
+</svg>

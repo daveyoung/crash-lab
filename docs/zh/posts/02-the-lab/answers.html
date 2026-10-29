@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>搭一个能崩的内核，也搭一个看得懂的 dump — 答案</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="答案搭一个能崩的内核">答案：搭一个能崩的内核</h1>
+<h2 id="1-为什么-kexec-的-bzimage-必须与启动的那份一致">1. 为什么 kexec
+的 bzImage 必须与启动的那份一致</h2>
+<p><strong>答案：因为 crash 内核是你抓 dump
+的环境，任何差异都是你没打算引入的变量。</strong></p>
+<p>严格的要求落在<strong>被崩的内核</strong>上：dump
+是它的内存，所以分析用的 <code>vmlinux</code>
+必须是它的那次构建。<code>kexec -p</code> 加载的是 panic
+之后启动的第二个内核，它负责暴露 <code>/proc/vmcore</code>、运行
+<code>makedumpfile</code>，因此它需要 <code>CONFIG_PROC_VMCORE</code>
+和写出 dump 所需的驱动。一个旧构建的镜像可能两样都缺。</p>
+<p>还有一种更安静的失败：旧镜像<strong>居然能用</strong>，于是没有任何东西告诉你，你抓取的那台机器并不是你测试过的那台。实验室让两份镜像保持逐字节一致，用
+<code>sha256sum</code> 核对，因为核对只要一条命令。</p>
+<p><strong>相关陷阱：</strong> <code>--reuse-cmdline</code> 是把
+<code>crashkernel=256M</code> 带进 crash
+内核的通道。复用出来的命令行里没有这笔预留，crash 内核就无处安身，kdump
+根本起不来。</p>
+<h2 id="2-让-struct-task_struct-可用的配置">2. 让 struct task_struct
+可用的配置</h2>
+<p><strong>答案：<code>CONFIG_DEBUG_INFO=y</code> 配上完整的 DWARF
+变体（这里是
+<code>CONFIG_DEBUG_INFO_DWARF5=y</code>），并且</strong>不能<strong>开
+<code>CONFIG_DEBUG_INFO_REDUCED</code> 或
+<code>CONFIG_DEBUG_INFO_SPLIT</code>。</strong></p>
+<p><code>CONFIG_DEBUG_INFO</code> 只表示&quot;生成
+DWARF&quot;。真正悄悄坏事的是这两个：</p>
+<ul>
+<li><code>DEBUG_INFO_REDUCED</code>：为了缩小镜像丢掉结构体成员等细节。<code>struct task_struct</code>
+还在，但你要的成员可能不在，于是 <code>ps</code>
+和所有顺着任务指针走的命令都不可靠。</li>
+<li><code>DEBUG_INFO_SPLIT</code>：把类型放进对象文件旁边的
+<code>.dwo</code>。单独的 <code>vmlinux</code> 就不含 <code>crash</code>
+需要的类型，典型症状是会话能打开、一碰结构体就失败。</li>
+</ul>
+<p>符号来自另一个选项
+<code>CONFIG_KALLSYMS</code>：它给名字和地址，<code>KALLSYMS_ALL</code>
+再扩展到数据符号。符号不是类型。</p>
+<p><strong>本实验的验证：</strong> <code>struct task_struct</code>
+能完整打印，结尾是 <code>SIZE: 2624</code>，<code>ps -S</code> 走完 94
+个任务。</p>
+<h2 id="3---no_panic-改变了什么">3. --no_panic 改变了什么</h2>
+<p><strong>答案：它让 <code>crash</code>
+不去找崩溃时正在运行的任务，直接把初始上下文设成 CPU 0 上的
+<code>swapper</code>。</strong></p>
+<p>这在 dump 里没有 panic 任务时才有意义：QEMU monitor 抓的运行中
+guest、<code>panic_on_oops=0</code> 下根本没 panic 的 dump、或者 notes
+没保住的 kdump。本实验的 monitor dump 里，<code>crash</code>
+会自己说明并退回那里：</p>
+<pre><code>crash: cannot read vmcoreinfo_data
+       PANIC: &quot;&quot;</code></pre>
+<p><strong>该用的场合：</strong> 你知道没有 panic
+上下文，又想要一个确定的起点，比如 <code>bt</code> 不带
+<code>-a</code>、<code>files</code>、<code>vm</code>
+这类依赖上下文的命令。</p>
+<p><strong>不该用的场合：</strong> 绝不要用它掩盖 namelist
+不匹配或符号缺失导致的警告。它改变的是你从哪个任务开始，不是 namelist
+对不对。</p>
+<h2 id="4-kexec-返回-0机器却重启了">4. kexec 返回 0，机器却重启了</h2>
+<p><strong>答案：先查 crash
+内核是否真的武装好，再查预留内存是否存在并被带了过去。</strong></p>
+<ol type="1">
+<li><p><strong>是&quot;已武装&quot;，不只是&quot;加载成功&quot;。</strong>
+<code>kexec -p</code> 返回 0 与
+<code>/sys/kernel/kexec_crash_loaded</code> 读到 <code>1</code>
+是两件事：</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /sys/kernel/kexec_crash_loaded</span></code></pre></div>
+<p>panic 之前不是 <code>1</code>，kdump 就不可能跑起来。第二个信号在
+oops 头里：只有内核知道 crash 内核已武装时，才会出现
+<code>Kdump: loaded</code>。</p></li>
+<li><p><strong>有没有为它预留内存。</strong> 预留来自命令行上的
+<code>crashkernel=</code>，并要靠 <code>--reuse-cmdline</code>
+带过去：</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grep</span> <span class="at">-i</span> crash /proc/iomem</span></code></pre></div>
+<p>没有 <code>Crash kernel</code> 区间，crash
+内核就无处安放，<code>kexec -p</code> 报什么都无关紧要。</p></li>
+</ol>
+<p>两样都没问题，下一个怀疑对象是 oops 根本没有变成 panic（没有
+<code>panic_on_oops=1</code>，或者内核从 oops 里恢复了过来），以及 crash
+内核起来了但没写任何东西就死了。那篇故事在<strong>第二次启动</strong>的串口日志里，不在第一次。</p>
+</body>
+</html>

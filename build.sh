@@ -10,9 +10,11 @@ cd "$(dirname "$0")"
 ROOT=$(pwd)
 OUT=$ROOT/docs
 CSS=$ROOT/assets/blog.css
+TMP=$ROOT/site/.build.$$
+trap 'rm -rf "$TMP"' EXIT
 
 rm -rf "$OUT"
-mkdir -p "$OUT"
+mkdir -p "$OUT" "$TMP"
 
 render() {
 	in=$1
@@ -36,44 +38,65 @@ render() {
 	)
 }
 
-# Landing page: fill the <!--POSTS--> marker from site/plan.tsv. A post is
-# "finished" when its directory exists; everything else is listed as coming.
-POSTS_MD=$ROOT/site/.posts.md
-INDEX_MD=$ROOT/site/.index.build.md
-trap 'rm -f "$POSTS_MD" "$INDEX_MD"' EXIT
+# make_landing <template> <plan> <posts-dir> <output> <title> <coming-label>
+#
+# Fills the <!--POSTS--> marker from a plan file. A post is "finished" when
+# <posts-dir>/NN-slug/index.md exists; the rest are rendered as coming. The
+# links are always relative "posts/NN-slug/" because each landing page sits
+# beside its own posts/ directory.
+make_landing() {
+	template=$1
+	plan=$2
+	checkdir=$3
+	out=$4
+	title=$5
+	label=$6
+	list=$TMP/posts.md
+	page=$TMP/page.md
 
-: > "$POSTS_MD"
-part=
-first=1
-while IFS='	' read -r p n slug title; do
-	[ "$n" = "number" ] && continue
-	[ -n "${n:-}" ] || continue
-	if [ "$p" != "$part" ]; then
-		[ $first -eq 0 ] && printf '\n' >> "$POSTS_MD"
-		printf '### %s\n\n' "$p" >> "$POSTS_MD"
-		part=$p
-		first=0
-	fi
-	if [ -f "$ROOT/posts/$n-$slug/index.md" ]; then
-		printf -- '- **%s.** [%s](posts/%s-%s/)\n' "$n" "$title" "$n" "$slug" >> "$POSTS_MD"
-	else
-		printf -- '- **%s.** *%s* — coming\n' "$n" "$title" >> "$POSTS_MD"
-	fi
-done < "$ROOT/site/plan.tsv"
+	: > "$list"
+	part=
+	first=1
+	while IFS='	' read -r p n slug ptitle; do
+		[ "$n" = "number" ] && continue
+		[ -n "${n:-}" ] || continue
+		if [ "$p" != "$part" ]; then
+			[ $first -eq 0 ] && printf '\n' >> "$list"
+			printf '### %s\n\n' "$p" >> "$list"
+			part=$p
+			first=0
+		fi
+		if [ -f "$ROOT/$checkdir/$n-$slug/index.md" ]; then
+			printf -- '- **%s.** [%s](posts/%s-%s/)\n' "$n" "$ptitle" "$n" "$slug" >> "$list"
+		else
+			printf -- '- **%s.** *%s* — %s\n' "$n" "$ptitle" "$label" >> "$list"
+		fi
+	done < "$ROOT/$plan"
 
-awk -v listfile="$POSTS_MD" '
-	/<!--POSTS-->/ { while ((getline line < listfile) > 0) print line; next }
-	{ print }
-' "$ROOT/site/index.md" > "$INDEX_MD"
+	awk -v listfile="$list" '
+		/<!--POSTS-->/ { while ((getline line < listfile) > 0) print line; next }
+		{ print }
+	' "$ROOT/$template" > "$page"
 
-render "$INDEX_MD" "$OUT/index.html" "Crash Lab"
+	render "$page" "$out" "$title"
+}
 
-# Posts, each with its answers.
+# English.
+make_landing site/index.md site/plan.tsv posts "$OUT/index.html" "Crash Lab" "coming"
 for dir in posts/*/; do
 	slug=$(basename "$dir")
 	title=$(sed -n '1s/^# //p' "$dir/index.md")
 	render "$dir/index.md" "$OUT/posts/$slug/index.html" "$title"
 	render "$dir/answers.md" "$OUT/posts/$slug/answers.html" "$title — answers"
+done
+
+# Chinese.
+make_landing zh/index.md site/plan.zh.tsv zh/posts "$OUT/zh/index.html" "Crash Lab 中文" "待发布"
+for dir in zh/posts/*/; do
+	slug=$(basename "$dir")
+	title=$(sed -n '1s/^# //p' "$dir/index.md")
+	render "$dir/index.md" "$OUT/zh/posts/$slug/index.html" "$title"
+	render "$dir/answers.md" "$OUT/zh/posts/$slug/answers.html" "$title — 答案"
 done
 
 # The module README is linked from Post 2 as ../../crashlab/.

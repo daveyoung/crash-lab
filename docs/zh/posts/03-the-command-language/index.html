@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>命令语言</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="命令语言">命令语言</h1>
+<p><strong>crash
+不是一堆命令的集合，它更像一门小语言。会用它管上下文、管输出、管循环，六七条命令就能回答原本要翻一百条命令才能回答的问题。</strong></p>
+<p>先看最容易想到的做法：</p>
+<pre><code>crash&gt; foreach bt | wc -l
+1014</code></pre>
+<p>一千零一十四行，九十四个任务，真正要看的那个 <code>bash</code>
+埋在中间。翻页不是办法，过滤才是：</p>
+<pre><code>crash&gt; foreach 581 bt
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+ #2 [ffffc90000e6bc60] crash_kexec at ffffffff81191ffb
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+ #5 [ffffc90000e6bd10] exc_page_fault at ffffffff8166d18c
+ #6 [ffffc90000e6bd60] asm_exc_page_fault at ffffffff810011b6
+    [exception RIP: crashlab_trigger_write.cold+63]</code></pre>
+<p>输出里没有新东西。新的是知道了 <code>foreach</code>
+可以带选择器，而选择器可以是 PID、任务指针、名字或者状态。</p>
+<h2 id="语法其实很小">语法其实很小</h2>
+<p>一行就是
+<code>命令 [选项] [参数]</code>。真正讲究的是参数：很多命令的同一个位置，既能放符号，也能放十六进制地址、PID
+或 <code>task_struct</code> 指针。</p>
+<pre><code>crash&gt; bt 581
+crash&gt; bt ffff88807db98000</code></pre>
+<p>这两个请求等价。下面这个也一样：</p>
+<pre><code>crash&gt; sym ffffffffa0000063
+ffffffffa0000063 (t) crashlab_trigger_write.cold [crashlab]</code></pre>
+<p>异常帧里的地址，一条命令就还原成了符号。第 4
+篇专门讲这件事，这里只要记住：参数位置不挑食。</p>
+<h2 id="上下文是一种状态">上下文是一种状态</h2>
+<p>不带参数的 <code>set</code> 打印你当前站在哪儿：</p>
+<pre><code>crash&gt; set
+    PID: 581
+COMMAND: &quot;bash&quot;
+   TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
+    CPU/NUMA:    1/0
+  STATE: TASK_RUNNING (PANIC)</code></pre>
+<p>这是 panic 任务，因为 <code>crash</code> 从 dump
+里把它挑出来了。panic 任务也会丢，丢的时候用这条找回来：</p>
+<pre><code>crash&gt; set -p</code></pre>
+<p>也可以把上下文钉在某个 CPU 上：</p>
+<pre><code>crash&gt; set -c 2
+crash&gt; bt
+    PID: 0
+COMMAND: &quot;swapper/2&quot;
+   TASK: ffff88800294e200  (1 of 4)  [THREAD_INFO: ffff88800294e200]
+    CPU/NUMA:    2/0
+  STATE: TASK_RUNNING (ACTIVE)</code></pre>
+<p>上下文是会留存的。后面的
+<code>bt</code>、<code>files</code>、<code>vm</code>、<code>task</code>
+都会默默沿用 <code>set</code>
+留下的状态。写命令文件时这很方便，交互式敲了一长串之后就很危险。<code>ps</code>
+会用 <code>&gt;</code> 标出当前任务，随时可以核一下：</p>
+<pre><code>      PID    PPID  CPU/NUMA       TASK        ST  %MEM      VSZ      RSS  COMM
+        1       0    3/0    ffff888002949c00  IN   0.7    25896    15300  systemd
+&gt;     581     516    1/0    ffff88807db98000  RU   0.3   234244     5492  bash</code></pre>
+<h2 id="几个值得设的变量">几个值得设的变量</h2>
+<p><code>set -v</code> 会把变量表整个打出来。和 dump
+有关的是这几个：</p>
+<pre><code>        scroll: off (none)
+[...]
+         radix: 10 (decimal)
+     print_max: 256
+   print_array: off
+        silent: on
+        unwind: off
+[...]</code></pre>
+<p>这段取自一次 <code>-s</code> 运行，所以滚动关着、<code>silent</code>
+是 on；交互式会话里这里会是
+<code>scroll: on (/usr/bin/less)</code>。</p>
+<p><code>radix</code> 决定 gdb 那侧输出按什么进制打。同一个符号：</p>
+<pre><code>crash&gt; p jiffies
+jiffies = $1 = 4294905494
+crash&gt; set radix 16
+output radix: 16 (hex)
+crash&gt; p jiffies
+jiffies = $2 = 0xffff0e96</code></pre>
+<p>这里默认是十进制，别的地方不一定。<code>print_max</code> 和
+<code>print_array</code> 管数组打多少、打不打全。只看一次的
+dump，默认值够用；要拿两次报告做 diff，这些就是可复现性的一部分。</p>
+<h2 id="输出分页器管道文件">输出：分页器、管道、文件</h2>
+<p>默认情况下 <code>crash</code> 把输出送给
+<code>less</code>。放进脚本就是等着挂住，所以常规调用都带
+<code>-s</code>（<code>--silent</code>）和
+<code>--no_scroll</code>，会话里则用 <code>set scroll off</code>。</p>
+<p>管道和重定向就是 shell 语法，对 crash 输出同样有效：</p>
+<pre><code>crash&gt; log | grep -i crashlab
+[   52.971995] CRASHLAB: null deref triggered by pid 581 (bash)
+[   52.982059] RIP: 0010:crashlab_trigger_write.cold+0x3f/0x5d [crashlab]
+[   53.016379] Modules linked in: crashlab(O)
+
+crash&gt; ps -S &gt; ps-states.txt        # 覆盖
+crash&gt; foreach UN bt &gt;&gt; un.txt      # 追加</code></pre>
+<p>有一个坑，是这次实验真花时间踩出来的：当前版本的
+<code>crash</code>，在 <code>-i</code>
+命令文件里跑<strong>带管道</strong>的
+<code>log</code>，会把头部打坏。文件如果是</p>
+<pre><code>sys
+log -T | tail -n 3
+exit</code></pre>
+<p><code>PANIC:</code> 那一行会变成 log 的尾巴，真正的 panic
+字符串被挤到整个输出的最后：</p>
+<pre><code>       PANIC: [Mon Oct 26 18:55:16 CST 2026]  &lt;/TASK&gt;
+[Mon Oct 26 18:55:16 CST 2026] Modules linked in: crashlab(O)
+[Mon Oct 26 18:55:16 CST 2026] CR2: 0000000000000000
+[...]
+&quot;Oops: Oops: 0002 [#1] SMP&quot; (check log for details)</code></pre>
+<p>同样的命令从 stdin 喂进去没事，<code>log -T</code>
+不带管道也没事。修好之前，命令文件里把 <code>log</code> 放在
+<code>sys</code> 前面，或者干脆别加管道。</p>
+<h2 id="输入三种喂法">输入：三种喂法</h2>
+<div class="sourceCode" id="cb14"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">-i</span> triage.crash vmlinux vmcore   <span class="co"># 命令文件</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> vmlinux vmcore <span class="op">&lt;</span> triage.crash    <span class="co"># 标准输入</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span><span class="op">&gt;</span> ps <span class="at">-p</span> <span class="op">&lt;</span> pidlist                    <span class="co"># 单个命令的逐行参数</span></span></code></pre></div>
+<p><code>-i</code> 读完文件就执行，遇到文件末尾退出。不过还是把
+<code>exit</code> 写上：不写也能结束，但 <code>crash</code> 的返回码是
+1，外面包一层脚本就会记成失败。</p>
+<p>第三种最容易被忽略。一个每行一个 PID 的文件，就是参数列表：</p>
+<pre><code>crash&gt; ps -p &lt; pids.txt
+PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: &quot;swapper/0&quot;
+ PID: 1        TASK: ffff888002949c00  CPU/NUMA:    3/0    COMMAND: &quot;systemd&quot;
+  PID: 516      TASK: ffff88807df78000  CPU/NUMA:    2/0    COMMAND: &quot;login&quot;
+   PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
+<h2 id="foreach-就是那个循环">foreach 就是那个循环</h2>
+<p><code>foreach</code> 对一批任务跑一条命令。选择器按位置给：</p>
+<table>
+<thead>
+<tr>
+<th>选择器</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pid</code></td>
+<td>一个 PID</td>
+</tr>
+<tr>
+<td><code>taskp</code></td>
+<td>一个 <code>task_struct</code> 地址</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>任务名；<code>&#39;regex&#39;</code> 写正则</td>
+</tr>
+<tr>
+<td><code>kernel</code></td>
+<td>只看内核线程</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>只看用户线程</td>
+</tr>
+<tr>
+<td><code>gleader</code></td>
+<td>用户线程的组长</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>每个 CPU 上正在跑的任务</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td><code>RU IN UN ST ZO TR SW DE WA PA ID NE</code> 之一</td>
+</tr>
+<tr>
+<td>不给</td>
+<td>所有任务</td>
+</tr>
+</tbody>
+</table>
+<p>状态字母是 crash 自己的一套，和 <code>ps(1)</code> 对不上。这份 dump
+里是这样的：</p>
+<pre><code>crash&gt; ps -S
+  RU: 5
+  IN: 46
+  ID: 43</code></pre>
+<p>于是 <code>foreach UN bt</code>——&quot;谁卡在 D
+状态&quot;这个经典问题——一行都不打，因为这份崩溃里没有不可中断任务。这不是命令坏了，这就是答案。同样的选择器放到一次文件系统挂死的现场，画面完全不同。</p>
+<p>几个实际用法：</p>
+<pre><code>crash&gt; foreach kernel bt | head -12          # 只看内核线程
+crash&gt; foreach active bt                     # 每个 CPU 一个
+crash&gt; foreach systemd task -R __state       # 所有 systemd，只看一个成员
+crash&gt; foreach &#39;systemd|bash&#39; ps             # 按任务名正则</code></pre>
+<p><code>foreach</code>
+把余下的内容原样交给内层命令，选项也算内层的：</p>
+<pre><code>crash&gt; foreach 581 bt -r</code></pre>
+<p>意思是&quot;对 PID 581 跑 <code>bt -r</code>&quot;，不是&quot;用
+<code>foreach</code> 的 <code>-r</code> 跑
+<code>bt</code>&quot;。任务名和选择器重名时，加反斜杠转义（<code>\kernel</code>）。</p>
+<h2 id="别名算术ascii">别名、算术、ASCII</h2>
+<p>会话开得久，就把反复敲的命令起个名：</p>
+<pre><code>crash&gt; alias mytask task
+ORIGIN   ALIAS    COMMAND
+runtime  mytask   task</code></pre>
+<p><code>eval</code>
+做地址算术，一次把所有进制列全。拿到一个偏移、想知道它属于哪个符号时很好用：</p>
+<pre><code>crash&gt; eval (0xffffffff81000000 + 0x1000)
+hexadecimal: ffffffff81001000  (18014398507401220KB)
+    decimal: 18446744071578849280  (-2130702336)
+      octal: 1777777777760100010000
+     binary: 1111111111111111111111111111111110000001000000000001000000000000
+
+crash&gt; eval -b 0x800
+hexadecimal: 800  (2KB)
+[...]
+   bits set: 11
+
+crash&gt; eval 2g
+hexadecimal: 80000000  (2GB)</code></pre>
+<p><code>ascii</code>
+把一个数按字节还原，小端序，正好是寄存器或内存里某个字看着像文本时要的：</p>
+<pre><code>crash&gt; ascii 6c6c756e
+000000006c6c756e: null&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;</code></pre>
+<p>这就是模块里拿来比较的那个字符串，在内存里的四个字节。</p>
+<p><code>repeat</code> 反而是要避开的那个。文档说它是给活系统用的，在
+dump 上它不会正常收尾：<code>repeat -1 bt</code>
+打一条栈之后就卡住，不杀掉不回来；<code>repeat -1 ps -S</code>
+一行都不打就卡住。真需要循环，用 shell 写；这里没有活的东西可盯。</p>
+<h2 id="把命令写成文件">把命令写成文件</h2>
+<p>上面这些，最后都是为了把一次分诊变成&quot;一个文件加一行命令&quot;。第一版故意很短：</p>
+<pre><code># triage.crash - first pass over an unknown dump
+set scroll off
+sys
+bt -a
+ps -S
+log -T
+kmem -i
+mod
+exit</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> <span class="at">-i</span> triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore <span class="op">&gt;</span> report.txt</span></code></pre></div>
+<p><code>report.txt</code> 578
+行，每一行都能复现：同样的输入文件、同一个
+<code>vmlinux</code>，结构一致，只有地址会变。这就是&quot;我看过一份
+dump&quot;和&quot;这是我跑的分诊&quot;之间的差别。第 19
+篇会把这份文件长成报告，形状不变。</p>
+<h2 id="易错点">易错点</h2>
+<ul>
+<li><code>&gt;</code> 覆盖，<code>&gt;&gt;</code>
+追加。用错一个，昨天的证据就没了。</li>
+<li>分页器会在脚本里吞输出。<code>-s</code> 和
+<code>--no_scroll</code>，或者在文件里
+<code>set scroll off</code>。</li>
+<li>用 <code>-s</code> 启动之后，<code>set scroll on</code>
+是无效的；它会回一句
+<code>scroll: off (none)</code>，这次会话里也打不开了。</li>
+<li>上下文会留存。三条命令之前的 <code>set -c</code>
+可能正在悄悄改变此刻 <code>bt</code> 的含义。</li>
+<li><code>foreach</code> 按位置解析，选项属于内层命令。</li>
+<li>状态字母是 crash
+自己的（<code>UN</code>、<code>DE</code>、<code>ID</code>），别当成
+<code>ps(1)</code> 的字母。</li>
+<li><code>-i</code> 文件末尾不写 <code>exit</code>，返回码是 1。</li>
+<li>当前版本里，<code>-i</code> 中 <code>sys</code> 之后接带管道的
+<code>log</code> 会打坏 <code>PANIC:</code> 行。修好之前别用管道。</li>
+<li><code>!</code> 跑 shell 命令，单独一个 <code>!</code> 进
+shell。别喂不可信输入。</li>
+<li><code>repeat</code> 在 dump 上不能用，会卡住。</li>
+<li>当前目录或 <code>$HOME</code> 下的 <code>.crashrc</code> 会悄悄改
+<code>set</code> 变量；命令文件才是可复现的那一层。</li>
+</ul>
+<h2 id="练习">练习</h2>
+<ol type="1">
+<li>把所有可中断任务的栈写进
+<code>in.txt</code>，再把空闲任务的栈追加进去。两个选择器各命中多少？<code>UN</code>
+为什么不在其中？</li>
+<li>不知道 PID，把上下文切到 panic
+任务，再打出它的命令名和状态。哪条命令能证明你没选错？</li>
+<li>把三条命令的分诊变成
+<code>crash -i triage.crash</code>，不要分页器，退出码为
+0。末尾必须写什么？忘了会怎样？</li>
+</ol>
+<p>答案见 <a href="answers.html"><code>answers.md</code></a>。</p>
+<h2 id="速查">速查</h2>
+<table>
+<thead>
+<tr>
+<th>想做的事</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>跑一个命令文件</td>
+<td><code>crash -s --no_scroll -i cmds vmlinux vmcore</code></td>
+</tr>
+<tr>
+<td>从标准输入</td>
+<td><code>crash -s vmlinux vmcore &lt; cmds</code></td>
+</tr>
+<tr>
+<td>逐行参数</td>
+<td><code>ps -p &lt; pids.txt</code></td>
+</tr>
+<tr>
+<td>关分页</td>
+<td><code>-s --no_scroll</code>，或 <code>set scroll off</code></td>
+</tr>
+<tr>
+<td>十进制输出</td>
+<td><code>set radix 10</code></td>
+</tr>
+<tr>
+<td>当前上下文</td>
+<td><code>set</code></td>
+</tr>
+<tr>
+<td>panic 任务</td>
+<td><code>set -p</code></td>
+</tr>
+<tr>
+<td>某个 CPU</td>
+<td><code>set -c N</code></td>
+</tr>
+<tr>
+<td>只看一个成员</td>
+<td><code>task -R __state</code></td>
+</tr>
+<tr>
+<td>过滤命令输出</td>
+<td><code>log | grep -i oops</code></td>
+</tr>
+<tr>
+<td>保存 / 追加</td>
+<td><code>&gt; file</code>、<code>&gt;&gt; file</code></td>
+</tr>
+<tr>
+<td>遍历任务</td>
+<td><code>foreach [选择器] cmd</code></td>
+</tr>
+<tr>
+<td>状态字母</td>
+<td><code>RU IN UN ST ZO TR SW DE WA PA ID NE</code></td>
+</tr>
+<tr>
+<td>给命令起名</td>
+<td><code>alias mytask task</code></td>
+</tr>
+<tr>
+<td>地址算术</td>
+<td><code>eval (a + b)</code></td>
+</tr>
+<tr>
+<td>字节转文本</td>
+<td><code>ascii &lt;hex&gt;</code></td>
+</tr>
+<tr>
+<td>退出</td>
+<td><code>exit</code>（写文件时别忘）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>版本。</strong> <code>crash 9.0.3++</code>（gdb 16.2）；内核
+<code>7.3.0+</code>（x86_64，DWARF5，
+<code>UNWINDER_ORC=y</code>，<code>KALLSYMS_ALL=n</code>）；dump
+<code>vmcore</code>，<code>makedumpfile -l -d 31</code> （kdump
+compressed v6，<code>[PARTIAL DUMP]</code>）。地址和 PID
+来自某一次运行。</p>
+<p>上一篇：<a href="../02-the-lab/">搭一个能崩的内核</a> · 下一篇：<a href="../04-symbols-types-addresses/">符号、类型与地址</a></p>
+</body>
+</html>

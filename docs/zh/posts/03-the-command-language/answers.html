@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>命令语言 — 答案</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="答案命令语言">答案：命令语言</h1>
+<h2 id="1-可中断任务与空闲任务写进同一个文件">1.
+可中断任务与空闲任务写进同一个文件</h2>
+<pre class="crash"><code>foreach IN bt &gt; in.txt
+foreach ID bt &gt;&gt; id.txt</code></pre>
+<p><strong>这份 dump 的命中数：</strong> 46 个可中断任务，43
+个空闲任务。动手之前 <code>ps -S</code> 就会告诉你：</p>
+<pre><code>crash&gt; ps -S
+  RU: 5
+  IN: 46
+  ID: 43</code></pre>
+<p><strong><code>UN</code> 为什么不在其中：</strong>
+这些字母是崩溃那一刻的任务状态，而这台机器死的时候没有处于
+<code>TASK_UNINTERRUPTIBLE</code>（也就是 <code>ps(1)</code> 里的
+<code>D</code>）的任务。文件系统或驱动卡死时，<code>UN</code>
+就是该抓的字母，第 7 篇会用到；但在本 dump
+上它什么也选不中，空文件就是正确答案，不是命令坏了。</p>
+<p><strong>第二条为什么用 <code>&gt;&gt;</code>：</strong>
+<code>&gt;</code> 会截断。两次都用
+<code>&gt;</code>，<code>in.txt</code>
+里只剩空闲任务——这个练习就是让你记住这一点。</p>
+<p><strong>输出长这样：</strong> 每个任务一截头部加自己的栈：</p>
+<pre><code>PID: 1        TASK: ffff888002949c00  CPU/NUMA:    3/0    COMMAND: &quot;systemd&quot;
+ #0 [ffffc900000b3d48] __schedule at ffffffff816708b8
+ ...</code></pre>
+<h2 id="2-不知道-pid切到-panic-任务">2. 不知道 PID，切到 panic 任务</h2>
+<pre class="crash"><code>set -p
+task</code></pre>
+<p>能证明你选对的是 <code>task</code>
+打出来的状态，它把所有睡眠任务和这个任务区分开：</p>
+<pre><code>    PID: 581
+COMMAND: &quot;bash&quot;
+   TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
+    CPU/NUMA:    1/0
+  STATE: TASK_RUNNING (PANIC)</code></pre>
+<p><code>(PANIC)</code> 是 <code>crash</code>
+在说：它选的是内核死时正在跑的任务，不是猜的。dump 里根本没有 panic
+任务时——比如 QEMU monitor 抓的——<code>set -p</code>
+变不出一个来，诚实的做法是启动时用 <code>--no_panic</code>，落在
+<code>swapper/0</code> 上。</p>
+<p>想看得更窄，用 <code>task -R __state</code>：</p>
+<pre><code>crash&gt; task -R __state
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+  __state = 0,</code></pre>
+<p><code>__state = 0</code> 就是 <code>TASK_RUNNING</code>，和&quot;panic
+任务正在 CPU 上跑&quot;对得上。注意成员名：这个内核叫
+<code>__state</code>，不叫 <code>state</code>，所以
+<code>task -R state</code> 会失败，报错本身就是提示。</p>
+<h2 id="3-能干净退出的命令文件">3. 能干净退出的命令文件</h2>
+<pre><code># triage.crash
+set scroll off
+sys
+bt -a
+ps -S
+log -T
+kmem -i
+mod
+exit</code></pre>
+<div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> <span class="at">-i</span> triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore <span class="op">&gt;</span> report.txt</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="va">$?</span></span></code></pre></div>
+<p><strong>末尾必须写：</strong> <code>exit</code>。</p>
+<p><strong>忘了会怎样：</strong> 文件读完 <code>crash</code>
+一样会退出，不会挂住——但返回码是 <strong>1</strong>，外面任何检查
+<code>$?</code>
+的包装脚本都会把这次分诊记成失败。这比挂住更糟，因为它不吭声：</p>
+<pre><code>$ crash -s --no_scroll -i noexit.crash vmlinux vmcore &gt; /dev/null; echo $?
+1
+$ crash -s --no_scroll -i triage.crash vmlinux vmcore &gt; /dev/null; echo $?
+0</code></pre>
+<p><strong>为什么要 <code>-s --no_scroll</code>：</strong>
+不加它们，分页器可能在非交互运行里把输出吞掉，而文件里的
+<code>set scroll off</code> 可能已经太晚。<code>-s</code> 同时把
+<code>silent</code> 打开，报告里只留数据，不留横幅。</p>
+<p><strong>可复现性：</strong>
+两次运行行数相同、结构相同。地址、PID、时间戳随 dump
+变，别的都不该变。</p>
+</body>
+</html>

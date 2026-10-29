@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Crash Lab 中文</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="crash-lab">Crash Lab</h1>
+<p><a href="../index.html">English</a> | <strong>中文</strong></p>
+<p>用 <code>crash</code> 做 Linux
+内核事后分析（postmortem）的实战系列。每一份 dump 都来自
+自己编译、故意弄崩的内核，而不是从别处捡来的样本。</p>
+<p>二十篇文章，分成五部分。写好的给出链接，还没写的标成&quot;待发布&quot;，写完一篇链接就
+自动出现。</p>
+<p>本实验的目标是让 <code>crash</code>
+更容易上手。发现问题欢迎提 PR。</p>
+<h3 id="第一部分--基础">第一部分 · 基础</h3>
+<ul>
+<li><strong>01.</strong> <a href="posts/01-what-crash-is/">认识
+crash：它需要什么</a></li>
+<li><strong>02.</strong> <a href="posts/02-the-lab/">搭一个能崩的内核，也搭一个看得懂的
+dump</a></li>
+<li><strong>03.</strong> <a href="posts/03-the-command-language/">命令语言</a></li>
+<li><strong>04.</strong> <a href="posts/04-symbols-types-addresses/">符号、类型与地址</a></li>
+</ul>
+<h3 id="第二部分--读崩现场">第二部分 · 读崩现场</h3>
+<ul>
+<li><strong>05.</strong> <em>恐慌栈</em> — 待发布</li>
+<li><strong>06.</strong> <em>当 bt 说谎时</em> — 待发布</li>
+<li><strong>07.</strong> <em>任务与调度器</em> — 待发布</li>
+<li><strong>08.</strong> <em>时间与日志</em> — 待发布</li>
+</ul>
+<h3 id="第三部分--内存">第三部分 · 内存</h3>
+<ul>
+<li><strong>09.</strong> <em>内存全景</em> — 待发布</li>
+<li><strong>10.</strong> <em>slab 取证</em> — 待发布</li>
+<li><strong>11.</strong> <em>页、映射与页表</em> — 待发布</li>
+<li><strong>12.</strong> <em>损坏、poison 与搜索</em> — 待发布</li>
+</ul>
+<h3 id="第四部分--子系统">第四部分 · 子系统</h3>
+<ul>
+<li><strong>13.</strong> <em>锁与死锁</em> — 待发布</li>
+<li><strong>14.</strong> <em>中断、定时器与 per-CPU</em> — 待发布</li>
+<li><strong>15.</strong> <em>文件、挂载与 IPC</em> — 待发布</li>
+<li><strong>16.</strong> <em>网络、设备与块层</em> — 待发布</li>
+</ul>
+<h3 id="第五部分--高级工具与收尾">第五部分 · 高级工具与收尾</h3>
+<ul>
+<li><strong>17.</strong> <em>模块与符号</em> — 待发布</li>
+<li><strong>18.</strong> <em>gdb 模式、扩展与 bpf</em> — 待发布</li>
+<li><strong>19.</strong> <em>自动化与分诊</em> — 待发布</li>
+<li><strong>20.</strong> <em>收尾案例</em> — 待发布</li>
+</ul>
+<h2 id="实验模块">实验模块</h2>
+<p><a href="../crashlab/"><code>crashlab/</code></a>
+是一个故意写坏的小内核模块：从 debugfs 触发一次空指针
+解引用，另外在加载时建一条四节点的链表，方便在 dump
+里手动走一遍。它会让所在机器 panic，请只在一次性虚拟机里用。</p>
+<h2 id="构建本站">构建本站</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./build.sh</span>          <span class="co"># 生成到 docs/</span></span></code></pre></div>
+<p><code>docs/</code> 就是发布出去的内容。文章是
+Markdown，<code>build.sh</code> 用 <code>pandoc</code> 把正文、答案
+和首页渲染成自带样式的 HTML，并把答案链接改写成 <code>.html</code>。</p>
+<h2 id="许可">许可</h2>
+<p>模块使用 GPL-2.0，文章版权归作者。</p>
+</body>
+</html>

@@ -1,5 +1,7 @@
 # Crash Lab
 
+[**English**](index.html) | [中文](zh/index.html)
+
 Practical Linux kernel postmortem analysis with `crash`, written as a series of
 case-driven posts. Every dump comes from a kernel built from source, crashed on
 purpose.
