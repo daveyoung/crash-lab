@@ -402,4 +402,4 @@ that the two files came from the same build.
 `KALLSYMS_ALL=n`); `crash 9.0.3++`; `makedumpfile 1.7.9++`; QEMU 10.1.2;
 GCC 15.2.1. Addresses and build numbers vary between builds and runs.
 
-Previous: [Post 1 — What crash is, and what it needs](../01-what-crash-is/index.html).
+Previous: [Post 1 — What crash is, and what it needs](../01-what-crash-is/index.html) · Next: [Post 3 — The command language](../03-the-command-language/index.html) · Index: [all posts](../../index.html).

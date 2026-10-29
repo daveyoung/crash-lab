@@ -240,4 +240,4 @@ Answers and the reasoning are in [`answers.md`](answers.md).
 `crash 9.0.3++`; QEMU 10.1.2. Addresses vary between builds and runs; the
 addresses here belong to this dump and its matching `vmlinux`.
 
-Next: [Post 2 — The lab: make → KVM → vmcore → crash](../02-the-lab/index.html).
+Next: [Post 2 — The lab: make → KVM → vmcore → crash](../02-the-lab/index.html) · Index: [all posts](../../index.html).

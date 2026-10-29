@@ -373,4 +373,4 @@ crash: cannot read vmcoreinfo_data
 `KALLSYMS_ALL=n`）；`crash 9.0.3++`；`makedumpfile 1.7.9++`；QEMU 10.1.2；
 GCC 15.2.1。地址与构建号随构建和运行变化。
 
-上一篇：[认识 crash](../01-what-crash-is/index.html) · 下一篇：[命令语言](../03-the-command-language/index.html)
+上一篇：[认识 crash](../01-what-crash-is/index.html) · 下一篇：[命令语言](../03-the-command-language/index.html) · 目录：[全部文章](../../index.html)

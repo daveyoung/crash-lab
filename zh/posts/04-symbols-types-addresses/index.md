@@ -365,4 +365,4 @@ crash> ptob 30ee
 编译；dump `vmcore-raw`，`makedumpfile -l -d 31`。模块地址和堆地址每次运行都会
 变，链表头从 `dmesg` 取。
 
-上一篇：[命令语言](../03-the-command-language/index.html) · 下一篇：待发布
+上一篇：[命令语言](../03-the-command-language/index.html) · 目录：[全部文章](../../index.html)
