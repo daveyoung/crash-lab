@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>The command language</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="the-command-language">The command language</h1>
+<p><strong><code>crash</code> is a small language, not a menu. Once you
+can steer context, output, and iteration, the same six or seven commands
+answer questions that would otherwise take a hundred.</strong></p>
+<p>The first attempt at triage was the obvious one:</p>
+<pre><code>crash&gt; foreach bt | wc -l
+1014</code></pre>
+<p>One thousand and fourteen lines, ninety-four tasks, and the task that
+matters — the <code>bash</code> that wrote to the trigger file — is
+somewhere in the middle. Scrolling is not a plan. Filtering is:</p>
+<pre><code>crash&gt; foreach 581 bt
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+ #2 [ffffc90000e6bc60] crash_kexec at ffffffff81191ffb
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+ #5 [ffffc90000e6bd10] exc_page_fault at ffffffff8166d18c
+ #6 [ffffc90000e6bd60] asm_exc_page_fault at ffffffff810011b6
+    [exception RIP: crashlab_trigger_write.cold+63]</code></pre>
+<p>Nothing in that output is new. What is new is knowing that
+<code>foreach</code> takes a selector, and that the selector can be a
+PID, a task pointer, a name, or a state.</p>
+<h2 id="the-grammar-is-small">The grammar is small</h2>
+<p>Every line is <code>command [options] [arguments]</code>. The
+interesting part is the argument: most commands accept a symbol, a
+hexadecimal address, a PID, or a <code>task_struct</code> pointer in the
+same slot.</p>
+<pre><code>crash&gt; bt 581
+crash&gt; bt ffff88807db98000</code></pre>
+<p>are the same request. So are these:</p>
+<pre><code>crash&gt; sym ffffffffa0000063
+ffffffffa0000063 (t) crashlab_trigger_write.cold [crashlab]</code></pre>
+<p>That is the address from the exception frame, turned back into a
+symbol with one command. Post 4 is entirely about that trick; here it is
+enough to know the argument slot is not picky.</p>
+<h2 id="context-is-state">Context is state</h2>
+<p><code>set</code> with no arguments prints where you are:</p>
+<pre><code>crash&gt; set
+    PID: 581
+COMMAND: &quot;bash&quot;
+   TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
+    CPU/NUMA:    1/0
+  STATE: TASK_RUNNING (PANIC)</code></pre>
+<p>That is the panic task, because <code>crash</code> picked it from the
+dump. Losing the panic task is common enough that there is a command to
+get it back:</p>
+<pre><code>crash&gt; set -p</code></pre>
+<p>and a command to pin the context to a CPU instead:</p>
+<pre><code>crash&gt; set -c 2
+crash&gt; bt
+    PID: 0
+COMMAND: &quot;swapper/2&quot;
+   TASK: ffff88800294e200  (1 of 4)  [THREAD_INFO: ffff88800294e200]
+    CPU/NUMA:    2/0
+  STATE: TASK_RUNNING (ACTIVE)</code></pre>
+<p>Context persists. Every later context-sensitive command —
+<code>bt</code>, <code>files</code>, <code>vm</code>, <code>task</code>
+— silently uses whatever <code>set</code> left behind. That is useful in
+a command file and dangerous in a long interactive session where you
+forget what you did three commands ago. <code>ps</code> marks the
+current task with <code>&gt;</code> so you can check:</p>
+<pre><code>      PID    PPID  CPU/NUMA       TASK        ST  %MEM      VSZ      RSS  COMM
+        1       0    3/0    ffff888002949c00  IN   0.7    25896    15300  systemd
+&gt;     581     516    1/0    ffff88807db98000  RU   0.3   234244     5492  bash</code></pre>
+<h2 id="variables-worth-setting">Variables worth setting</h2>
+<p><code>set -v</code> prints the whole variable table. The ones that
+matter in a dump:</p>
+<pre><code>        scroll: off (none)
+[...]
+         radix: 10 (decimal)
+     print_max: 256
+   print_array: off
+        silent: on
+        unwind: off
+[...]</code></pre>
+<p>That sample came from a <code>-s</code> run, which is why scrolling
+is off and <code>silent</code> is on; an interactive session shows
+<code>scroll: on (/usr/bin/less)</code> instead.</p>
+<p><code>radix</code> changes how gdb-backed output is printed. Here it
+starts in decimal, which is not the default everywhere:</p>
+<pre><code>crash&gt; p jiffies
+jiffies = $1 = 4294905494
+crash&gt; set radix 16
+output radix: 16 (hex)
+crash&gt; p jiffies
+jiffies = $2 = 0xffff0e96</code></pre>
+<p><code>print_max</code> and <code>print_array</code> decide whether
+arrays print whole or truncated. For a dump you are reading once,
+defaults are fine. For a report you are about to diff against another
+one, they are part of reproducibility.</p>
+<h2 id="output-pager-pipes-files">Output: pager, pipes, files</h2>
+<p>By default <code>crash</code> pipes output through <code>less</code>.
+In a script that is a hang waiting to happen, so the usual invocation
+carries <code>-s</code> (<code>--silent</code>) and
+<code>--no_scroll</code>, and inside a session
+<code>set scroll off</code> does the same for the current run.</p>
+<p>Pipes and redirection are standard shell syntax and apply to crash
+output:</p>
+<pre><code>crash&gt; log | grep -i crashlab
+[   52.971995] CRASHLAB: null deref triggered by pid 581 (bash)
+[   52.982059] RIP: 0010:crashlab_trigger_write.cold+0x3f/0x5d [crashlab]
+[   53.016379] Modules linked in: crashlab(O)
+
+crash&gt; ps -S &gt; ps-states.txt        # truncates
+crash&gt; foreach UN bt &gt;&gt; un.txt      # appends</code></pre>
+<p>One warning that cost time in this lab: in the current
+<code>crash</code>, a <strong>piped</strong> <code>log</code> inside a
+<code>-i</code> command file corrupts the header. If the file is</p>
+<pre><code>sys
+log -T | tail -n 3
+exit</code></pre>
+<p>then the <code>PANIC:</code> line comes out as the log tail and the
+real panic string is printed at the end of the session:</p>
+<pre><code>       PANIC: [Mon Oct 26 18:55:16 CST 2026]  &lt;/TASK&gt;
+[Mon Oct 26 18:55:16 CST 2026] Modules linked in: crashlab(O)
+[Mon Oct 26 18:55:16 CST 2026] CR2: 0000000000000000
+[...]
+&quot;Oops: Oops: 0002 [#1] SMP&quot; (check log for details)</code></pre>
+<p>The same commands on stdin are fine, and so is an unpiped
+<code>log -T</code>. Until that is fixed, put <code>log</code> before
+<code>sys</code> in a command file, or leave the pipe out.</p>
+<h2 id="input-files">Input: files</h2>
+<p>Three ways to feed commands, and they differ at the edges:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">-i</span> triage.crash vmlinux vmcore   <span class="co"># command file</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> vmlinux vmcore <span class="op">&lt;</span> triage.crash    <span class="co"># stdin</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span><span class="op">&gt;</span> ps <span class="at">-p</span> <span class="op">&lt;</span> pidlist                    <span class="co"># per-line arguments to one command</span></span></code></pre></div>
+<p><code>-i</code> reads the file, executes it, and exits at end of
+file. Include <code>exit</code> anyway: a file that ends without it
+still terminates, but <code>crash</code> returns 1, which a wrapper
+script will read as failure.</p>
+<p>The third form is the underused one. A file with one PID per line
+becomes an argument list:</p>
+<pre><code>crash&gt; ps -p &lt; pids.txt
+PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: &quot;swapper/0&quot;
+ PID: 1        TASK: ffff888002949c00  CPU/NUMA:    3/0    COMMAND: &quot;systemd&quot;
+  PID: 516      TASK: ffff88807df78000  CPU/NUMA:    2/0    COMMAND: &quot;login&quot;
+   PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
+<h2 id="foreach-is-the-loop"><code>foreach</code> is the loop</h2>
+<p><code>foreach</code> runs one command against many tasks. The
+selector is positional:</p>
+<table>
+<thead>
+<tr>
+<th>selector</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pid</code></td>
+<td>one PID</td>
+</tr>
+<tr>
+<td><code>taskp</code></td>
+<td>a <code>task_struct</code> address</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>task name; <code>&#39;regex&#39;</code> for a POSIX extended regex</td>
+</tr>
+<tr>
+<td><code>kernel</code></td>
+<td>kernel threads only</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>user threads only</td>
+</tr>
+<tr>
+<td><code>gleader</code></td>
+<td>user thread group leaders</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>the active task on each CPU</td>
+</tr>
+<tr>
+<td><code>state</code></td>
+<td>one of <code>RU IN UN ST ZO TR SW DE WA PA ID NE</code></td>
+</tr>
+<tr>
+<td><em>(none)</em></td>
+<td>every task</td>
+</tr>
+</tbody>
+</table>
+<p>The state letters are crash&#39;s own and do not match
+<code>ps(1)</code>&#39;s. On this dump:</p>
+<pre><code>crash&gt; ps -S
+  RU: 5
+  IN: 46
+  ID: 43</code></pre>
+<p>so <code>foreach UN bt</code> — the classic &quot;who is stuck in D state&quot;
+query — prints nothing at all, because there are no uninterruptible
+tasks in this crash. That is not a failure; it is the answer. The same
+selector on a hung filesystem looks very different.</p>
+<p>Some selectors in use:</p>
+<pre><code>crash&gt; foreach kernel bt | head -12          # kernel threads only
+crash&gt; foreach active bt                     # one task per CPU
+crash&gt; foreach systemd task -R __state       # every &quot;systemd&quot;, one member
+crash&gt; foreach &#39;systemd|bash&#39; ps             # regex on the task name</code></pre>
+<p><code>foreach</code> passes the rest of the line to the inner
+command, flags included:</p>
+<pre><code>crash&gt; foreach 581 bt -r</code></pre>
+<p>means &quot;run <code>bt -r</code> on PID 581&quot;, not &quot;run <code>bt</code>
+with <code>foreach</code>&#39;s <code>-r</code>&quot;. When a command name
+collides with a selector word, escape the name
+(<code>\kernel</code>).</p>
+<h2 id="aliases-arithmetic-and-ascii">Aliases, arithmetic, and
+ASCII</h2>
+<p>Long-lived session? Name the commands you retype:</p>
+<pre><code>crash&gt; alias mytask task
+ORIGIN   ALIAS    COMMAND
+runtime  mytask   task</code></pre>
+<p><code>eval</code> does address arithmetic and shows every base at
+once, which is handy when a frame gives you an offset and you want the
+symbol it belongs to:</p>
+<pre><code>crash&gt; eval (0xffffffff81000000 + 0x1000)
+hexadecimal: ffffffff81001000  (18014398507401220KB)
+    decimal: 18446744071578849280  (-2130702336)
+      octal: 1777777777760100010000
+     binary: 1111111111111111111111111111111110000001000000000001000000000000
+
+crash&gt; eval -b 0x800
+hexadecimal: 800  (2KB)
+[...]
+   bits set: 11
+
+crash&gt; eval 2g
+hexadecimal: 80000000  (2GB)</code></pre>
+<p><code>ascii</code> turns a number into the bytes it represents,
+little-endian, which is exactly what you want when a register or a word
+in memory looks like text:</p>
+<pre><code>crash&gt; ascii 6c6c756e
+000000006c6c756e: null&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;</code></pre>
+<p>That is the string the module compares against, four bytes in memory
+order.</p>
+<p><code>repeat</code> is the one to avoid. It is documented as a
+live-system tool, and on a dump it does not terminate:
+<code>repeat -1 bt</code> prints one backtrace and then hangs until it
+is killed, and <code>repeat -1 ps -S</code> prints nothing at all. Use a
+loop in your shell if you need one; there is nothing live here to
+watch.</p>
+<h2 id="what-is-not-scriptable">What is not scriptable</h2>
+<p>History is a readline feature of the interactive prompt:
+<code>h</code> lists previous commands, <code>rr</code> repeats one, and
+<code>!!</code> re-runs the last. None of it exists in a command file,
+which is exactly why the file has to contain the whole story.</p>
+<p>The other thing to know is <code>.crashrc</code>. <code>crash</code>
+reads it — from the current directory first, then <code>$HOME</code> —
+and applies any <code>set</code> commands it finds there. That means
+your friendly neighbourhood <code>set scroll off</code> can change a
+colleague&#39;s run, and a stray <code>set radix 10</code> can change the
+numbers in a report. Command files and command-line options override it,
+so a reproducible run should set what it depends on explicitly.</p>
+<h2 id="the-file-is-the-unit-of-triage">The file is the unit of
+triage</h2>
+<p>Everything above exists so that a triage run is one file and one
+command line. The first version is short on purpose:</p>
+<pre><code># triage.crash - first pass over an unknown dump
+set scroll off
+sys
+bt -a
+ps -S
+log -T
+kmem -i
+mod
+exit</code></pre>
+<div class="sourceCode" id="cb23"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> <span class="at">-i</span> triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore <span class="op">&gt;</span> report.txt</span></code></pre></div>
+<p><code>report.txt</code> is 578 lines, and every one of them is
+reproducible: the same input file and the same <code>vmlinux</code>
+produce the same structure, with only addresses varying. That is the
+difference between &quot;I looked at a dump once&quot; and &quot;here is the triage I
+ran&quot;. Post 19 grows this file into a report; the shape does not
+change.</p>
+<h2 id="traps">Traps</h2>
+<ul>
+<li><code>&gt;</code> truncates, <code>&gt;&gt;</code> appends. The
+wrong one silently destroys yesterday&#39;s evidence.</li>
+<li>The pager will swallow output in scripts. <code>-s</code> and
+<code>--no_scroll</code>, or <code>set scroll off</code> inside the
+file.</li>
+<li><code>set scroll on</code> is a no-op when crash was started with
+<code>-s</code>; it reports <code>scroll: off (none)</code> and you
+cannot turn it back on for that session.</li>
+<li>Context persists across commands. A <code>set -c</code> three
+commands ago can silently change what <code>bt</code> means now.</li>
+<li><code>foreach</code> parsing is positional, and flags belong to the
+inner command.</li>
+<li>State letters are crash-specific (<code>UN</code>, <code>DE</code>,
+<code>ID</code>); do not read them as <code>ps(1)</code> letters.</li>
+<li>A <code>-i</code> file without <code>exit</code> exits with status
+1.</li>
+<li>In the current release, a piped <code>log</code> after
+<code>sys</code> inside <code>-i</code> corrupts the <code>PANIC:</code>
+line. Keep the pipe out until it is fixed.</li>
+<li><code>!</code> runs a shell command, and <code>!</code> alone
+escapes to a shell. Do not feed it untrusted input.</li>
+<li>A <code>.crashrc</code> in the current directory or
+<code>$HOME</code> can silently change <code>set</code> variables; the
+command file is what makes the run reproducible.</li>
+<li><code>repeat</code> does not work on a dump; it hangs.</li>
+</ul>
+<h2 id="exercises">Exercises</h2>
+<ol type="1">
+<li>Write the backtraces of all interruptible tasks to
+<code>in.txt</code>, then append the backtraces of all idle tasks to the
+same file. How many tasks did each selector match, and why is
+<code>UN</code> not one of them here?</li>
+<li>Put the context on the panic task without knowing its PID, then show
+its command name and state. Which command proves you got the right
+task?</li>
+<li>Turn a three-command triage into <code>crash -i triage.crash</code>
+that runs without a pager and exits with status 0. What do you have to
+put at the end, and what happens if you forget it?</li>
+</ol>
+<p>Answers are in <a href="answers.html"><code>answers.md</code></a>.</p>
+<h2 id="cheat-sheet">Cheat sheet</h2>
+<table>
+<thead>
+<tr>
+<th>what</th>
+<th>how</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>run a file</td>
+<td><code>crash -s --no_scroll -i cmds vmlinux vmcore</code></td>
+</tr>
+<tr>
+<td>feed stdin</td>
+<td><code>crash -s vmlinux vmcore &lt; cmds</code></td>
+</tr>
+<tr>
+<td>per-line arguments</td>
+<td><code>ps -p &lt; pids.txt</code></td>
+</tr>
+<tr>
+<td>no pager</td>
+<td><code>-s --no_scroll</code>, or <code>set scroll off</code></td>
+</tr>
+<tr>
+<td>decimal output</td>
+<td><code>set radix 10</code></td>
+</tr>
+<tr>
+<td>current context</td>
+<td><code>set</code></td>
+</tr>
+<tr>
+<td>panic task</td>
+<td><code>set -p</code></td>
+</tr>
+<tr>
+<td>a CPU</td>
+<td><code>set -c N</code></td>
+</tr>
+<tr>
+<td>one member</td>
+<td><code>task -R __state</code></td>
+</tr>
+<tr>
+<td>filter a command</td>
+<td><code>log | grep -i oops</code></td>
+</tr>
+<tr>
+<td>save / append</td>
+<td><code>&gt; file</code>, <code>&gt;&gt; file</code></td>
+</tr>
+<tr>
+<td>loop over tasks</td>
+<td><code>foreach [sel] cmd</code></td>
+</tr>
+<tr>
+<td>states</td>
+<td><code>RU IN UN ST ZO TR SW DE WA PA ID NE</code></td>
+</tr>
+<tr>
+<td>name a command</td>
+<td><code>alias mytask task</code></td>
+</tr>
+<tr>
+<td>address math</td>
+<td><code>eval (a + b)</code></td>
+</tr>
+<tr>
+<td>bytes to text</td>
+<td><code>ascii &lt;hex&gt;</code></td>
+</tr>
+<tr>
+<td>exit</td>
+<td><code>exit</code> (and use it in files)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Versions.</strong> <code>crash 9.0.3++</code> (gdb 16.2);
+kernel <code>7.3.0+</code> (x86_64, DWARF5, <code>UNWINDER_ORC=y</code>,
+<code>KALLSYMS_ALL=n</code>); dump <code>vmcore</code> from
+<code>makedumpfile -l -d 31</code> (kdump-compressed v6,
+<code>[PARTIAL DUMP]</code>). Addresses and PIDs come from one run.</p>
+<p>Previous: <a href="../02-the-lab/">Post 2 — The lab</a>.</p>
+</body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>The lab: build a kernel you can crash, and a dump you can
+read</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="the-lab-build-a-kernel-you-can-crash-and-a-dump-you-can-read">The
+lab: build a kernel you can crash, and a dump you can read</h1>
+<p><strong>A postmortem is only as good as the kernel that produced it.
+Before the first crash you need three things: debug info that includes
+struct layouts, symbols for the code that will fail, and a kernel that
+can hand its memory to a second kernel. After that, the crash itself is
+four commands.</strong></p>
+<p>The first attempt at this lab ended in one line:</p>
+<pre><code>$ crash -s ~/crash-lab/linux/arch/x86/boot/bzImage ~/crash-lab/vmcore
+crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file format</code></pre>
+<p><code>bzImage</code> is what the machine boots. <code>vmlinux</code>
+is what <code>crash</code> reads. Everything in this post is arranged so
+that the next person builds a kernel where that distinction is the only
+trap left.</p>
+<p>Paths in the transcripts are shortened to <code>~/crash-lab</code>.
+Addresses, build numbers, and sizes come from one specific build; yours
+will differ.</p>
+<h2 id="what-the-kernel-must-have">What the kernel must have</h2>
+<p>A kernel can be perfectly healthy and useless for postmortem work.
+These are the options that matter:</p>
+<table>
+<thead>
+<tr>
+<th>option</th>
+<th>value</th>
+<th>why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CONFIG_DEBUG_INFO</code></td>
+<td><code>y</code></td>
+<td>the DWARF that <code>crash</code> reads types from</td>
+</tr>
+<tr>
+<td><code>CONFIG_DEBUG_INFO_DWARF5</code></td>
+<td><code>y</code></td>
+<td>modern default; <code>DWARF4</code> is the fallback if a tool
+chokes</td>
+</tr>
+<tr>
+<td><code>CONFIG_DEBUG_INFO_REDUCED</code></td>
+<td><code>n</code></td>
+<td>reduced DWARF drops struct members; <code>ps</code> and
+<code>struct</code> degrade</td>
+</tr>
+<tr>
+<td><code>CONFIG_DEBUG_INFO_SPLIT</code></td>
+<td><code>n</code></td>
+<td>split DWARF puts types in <code>.dwo</code> files, not in
+<code>vmlinux</code></td>
+</tr>
+<tr>
+<td><code>CONFIG_KALLSYMS</code></td>
+<td><code>y</code></td>
+<td>the symbol table, including module text</td>
+</tr>
+<tr>
+<td><code>CONFIG_KALLSYMS_ALL</code></td>
+<td><code>n</code></td>
+<td>data symbols; off here, and the cost is visible</td>
+</tr>
+<tr>
+<td><code>CONFIG_UNWINDER_ORC</code></td>
+<td><code>y</code></td>
+<td>no frame pointers; <code>bt</code> depends on this</td>
+</tr>
+<tr>
+<td><code>CONFIG_RANDOMIZE_BASE</code></td>
+<td><code>n</code></td>
+<td>no KASLR, so runtime addresses match the file</td>
+</tr>
+<tr>
+<td><code>CONFIG_KEXEC</code>, <code>CONFIG_CRASH_DUMP</code>,
+<code>CONFIG_PROC_VMCORE</code></td>
+<td><code>y</code></td>
+<td>the kdump path</td>
+</tr>
+<tr>
+<td><code>CONFIG_DEBUG_FS</code></td>
+<td><code>y</code></td>
+<td>the module&#39;s trigger file</td>
+</tr>
+<tr>
+<td><code>CONFIG_MODULES</code></td>
+<td><code>y</code></td>
+<td><code>crashlab.ko</code></td>
+</tr>
+</tbody>
+</table>
+<p>The two that &quot;look like debug info&quot; and are not are
+<code>REDUCED</code> and <code>SPLIT</code>. Both must be off. A
+<code>ps</code> that prints task names but cannot walk
+<code>task_struct</code> is worse than a clear failure.</p>
+<p><code>KALLSYMS_ALL</code> is the interesting one. With it off,
+function symbols still resolve and data symbols do not; this lab runs
+with it off so that the limitation is something you can see rather than
+read about. Post 17 comes back to it.</p>
+<p>The debug information is real, not a stripped stub:</p>
+<pre><code>$ readelf -S vmlinux | grep -E &#39;debug_info|debug_abbrev|debug_line&#39;
+  [41] .debug_info       PROGBITS         0000000000000000  011acac0
+  [42] .debug_abbrev     PROGBITS         0000000000000000  077525b5
+  [43] .debug_line       PROGBITS         0000000000000000  07abb198</code></pre>
+<h2 id="build-it">Build it</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/linux</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span><span class="st">&quot;</span><span class="va">$(</span><span class="fu">nproc</span><span class="va">)</span><span class="st">&quot;</span> bzImage modules</span></code></pre></div>
+<p>Three outputs matter, and only one of them is a namelist:</p>
+<table>
+<thead>
+<tr>
+<th>file</th>
+<th>what it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vmlinux</code></td>
+<td>ELF with DWARF — the namelist</td>
+</tr>
+<tr>
+<td><code>arch/x86/boot/bzImage</code></td>
+<td>compressed boot image — what the machine boots</td>
+</tr>
+<tr>
+<td><code>System.map</code></td>
+<td>text: addresses and names, no types</td>
+</tr>
+</tbody>
+</table>
+<p>The build reports its own identity, which you will need later:</p>
+<pre><code>Kernel: arch/x86/boot/bzImage is ready  (#16)</code></pre>
+<p><code>#16 SMP PREEMPT_DYNAMIC ...</code> is the version string that
+appears in the <code>crash</code> banner. It is not a build ID; Post 1
+explains why the difference matters.</p>
+<h2 id="the-export-trap">The export trap</h2>
+<p>The module failed to link the first time:</p>
+<pre><code>ERROR: modpost: crashlab.ko: symbol &#39;debugfs_create_dir&#39; undefined!
+ERROR: modpost: crashlab.ko: symbol &#39;debugfs_create_file_full&#39; undefined!
+ERROR: modpost: crashlab.ko: symbol &#39;debugfs_remove&#39; undefined!
+ERROR: modpost: crashlab.ko: symbol &#39;strim&#39; undefined!
+ERROR: modpost: crashlab.ko: symbol &#39;sysfs_streq&#39; undefined!
+make[4]: *** [scripts/Makefile.modpost:147: Module.symvers] Error 1</code></pre>
+<p>The symbols exist in <code>vmlinux</code>, so this is confusing until
+you look at why they are not exported.
+<code>CONFIG_TRIM_UNUSED_KSYMS=y</code> removes exported symbols that no
+in-tree module uses. If your config has very few <code>=m</code>
+entries, almost everything gets trimmed, and an out-of-tree module
+cannot resolve what it needs.</p>
+<p>Two ways out: turn trimming off, or keep it and name the exceptions.
+Keeping trimming is the better default — a lean <code>vmlinux</code> is
+the point of the option — so keep a whitelist file with the lab:</p>
+<pre><code>debugfs_create_dir
+debugfs_create_file_full
+debugfs_remove
+strim
+sysfs_streq</code></pre>
+<p>and one config line pointing at it (an absolute path, or one relative
+to the kernel tree — <code>~</code> is not expanded here):</p>
+<pre><code>CONFIG_TRIM_UNUSED_KSYMS=y
+CONFIG_UNUSED_KSYMS_WHITELIST=&quot;/home/you/crash-lab/ksym-whitelist.txt&quot;</code></pre>
+<p>After <code>make olddefconfig</code> and a rebuild, the export exists
+again:</p>
+<pre><code>$ nm vmlinux | grep __ksymtab_debugfs_create_dir
+ffffffff819c71f4 r __ksymtab_debugfs_create_dir</code></pre>
+<p>The whitelist is part of the lab and grows as later posts add module
+modes. Each addition means a rebuild and a new dump.</p>
+<h2 id="build-the-module">Build the module</h2>
+<p><code>crashlab.ko</code> is the deliberately buggy module from <a href="../../crashlab/"><code>crashlab/</code></a>. Its <code>null</code>
+mode writes to address zero from the debugfs write path, so the faulting
+task is your shell and the stack is short:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">volatile</span> u32 <span class="op">*</span>p <span class="op">=</span> <span class="op">(</span><span class="dt">volatile</span> u32 <span class="op">*)</span><span class="dv">0</span><span class="op">;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    pr_info<span class="op">(</span><span class="st">&quot;CRASHLAB: null deref triggered by pid </span><span class="sc">%d</span><span class="st"> (</span><span class="sc">%s</span><span class="st">)</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>        current<span class="op">-&gt;</span>pid<span class="op">,</span> current<span class="op">-&gt;</span>comm<span class="op">);</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>p <span class="op">=</span> <span class="bn">0xdeadbeef</span><span class="op">;</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> count<span class="op">;</span>   <span class="co">/* not reached */</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>Build it against the tree you just built:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/crashlab</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> KDIR=~/crash-lab/linux</span></code></pre></div>
+<p>The first build against <code>7.3.0+</code> failed on one line:</p>
+<pre><code>crashlab.c:54:19: error: ‘no_llseek’ undeclared here (not in a function); did you mean ‘noop_llseek’?
+   54 |         .llseek = no_llseek,</code></pre>
+<p><code>no_llseek</code> was removed from the kernel; the module uses
+<code>noop_llseek</code>. That is the only change it needed. The result
+is a normal out-of-tree module:</p>
+<pre><code>$ modinfo crashlab.ko
+author:         Crash Lab
+description:    Crash Lab deliberately buggy test module
+license:        GPL
+name:           crashlab
+vermagic:       7.3.0+ SMP preempt mod_unload</code></pre>
+<h2 id="boot-it-and-get-a-shell">Boot it and get a shell</h2>
+<p>Boot the kernel you built, in a virtual machine or on a machine you
+are willing to lose. Note the console you get a shell on, and make sure
+<code>debugfs</code> is mounted:</p>
+<pre><code># mount -t debugfs none /sys/kernel/debug</code></pre>
+<p>Everything from here happens in that guest. It needs the module, a
+copy of the same <code>bzImage</code>, and both <code>kexec-tools</code>
+and <code>makedumpfile</code> installed — a minimal rescue image often
+has neither. How you get them in is your business — a shared directory,
+a scp, an initramfs, a disk image. The one rule is below.</p>
+<p>Two command line arguments do the real work: <code>console=</code>
+for a console you can read, and <code>crashkernel=256M</code> for the
+reservation. How big the reservation must be depends on your userspace;
+256 MB is enough for a text-mode rescue environment and is what this lab
+uses. If the kernel cannot find the reservation at panic time, it has
+nowhere to put the crash kernel and the machine just reboots.</p>
+<h2 id="arm-the-crash-kernel">Arm the crash kernel</h2>
+<p><code>crashkernel=</code> on the kernel command line reserves memory
+for a second kernel. <code>--reuse-cmdline</code> carries that
+reservation into the kernel that will take over:</p>
+<pre><code># grep -i crash /proc/iomem
+  6a000000-79ffffff : Crash kernel
+
+# kexec -p /path/to/bzImage --reuse-cmdline; echo &quot;kexec rc=$?&quot;
+kexec rc=0
+
+# cat /sys/kernel/kexec_crash_loaded
+1
+# cat /sys/kernel/kexec_crash_size
+268435456</code></pre>
+<p><code>kexec -p</code> takes a <code>bzImage</code>, not a
+<code>vmlinux</code>, and it must be the <strong>same build</strong> as
+the kernel that is running. If those two differ, the crash kernel is a
+different kernel from the one it is dumping, and the dump loses symbols.
+Verify:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> bzImage            <span class="co"># the one the machine booted</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> /path/to/bzImage   <span class="co"># the one kexec will load</span></span></code></pre></div>
+<p>Check <code>kexec_crash_loaded</code> every time.
+<code>kexec -p</code> returning 0 and a crash kernel actually being
+armed are two different facts, and only the second one helps you after
+the panic.</p>
+<h2 id="die-on-purpose">Die on purpose</h2>
+<p>A NULL dereference in the kernel oopses and, by default, the machine
+keeps running. That is the opposite of what this lab needs, so make
+oopses fatal first:</p>
+<pre><code># echo 1 &gt; /proc/sys/kernel/panic_on_oops
+# insmod crashlab.ko
+crashlab: loading out-of-tree module taints kernel.
+CRASHLAB: loaded; write &#39;null&#39; to /sys/kernel/debug/crashlab/trigger</code></pre>
+<p>Then trigger it:</p>
+<pre><code># echo null &gt; /sys/kernel/debug/crashlab/trigger</code></pre>
+<p>and the kernel&#39;s last words:</p>
+<pre><code>BUG: kernel NULL pointer dereference, address: 0000000000000000
+#PF: supervisor write access in kernel mode
+#PF: error_code(0x0002) - not-present page
+PGD 0 P4D 0
+Oops: Oops: 0002 [#1] SMP
+CPU: 1 UID: 0 PID: 581 Comm: bash Kdump: loaded Tainted: G           O         7.3.0+ #16 PREEMPT(full)
+Tainted: [O]=OOT_MODULE</code></pre>
+<p><code>Kdump: loaded</code> is the line to look for: it is the kernel
+confirming that the crash kernel was armed when it died. Without it, the
+machine reboots and you get nothing.</p>
+<h2 id="the-kdump-boot-and-the-capture">The kdump boot and the
+capture</h2>
+<p>The crash kernel boots with an extra argument that points at the
+state the dying kernel left behind:</p>
+<pre><code>Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0 crashkernel=256M</code></pre>
+<p>and it recognises what it is looking at:</p>
+<pre><code>vmcore: dump is from kernel 7.3.0+</code></pre>
+<p>Log in, then write the dump out of <code>/proc/vmcore</code>:</p>
+<pre><code># makedumpfile -l -d 31 /proc/vmcore /root/vmcore
+The kernel version is not supported.
+The makedumpfile operation may be incomplete.
+[... progress bars ...]
+
+The dumpfile is saved to /root/vmcore.
+
+makedumpfile Completed.</code></pre>
+<p>Two details hide in that output.</p>
+<p><code>The kernel version is not supported</code> is
+<code>makedumpfile 1.7.9++</code> not knowing <code>7.3.0+</code>. The
+dump is fine — the kdump kernel says so, and <code>crash</code> reads it
+without complaint. Do not chase this warning; it is version-table
+lag.</p>
+<p><code>-d 31</code> filters page types: zero, cache, cache-private,
+user, and free pages are not written. That is why every session on this
+dump says <code>[PARTIAL DUMP]</code>. For stacks, tasks, slab, and the
+log it is enough. For anything that needs user pages, switch to
+<code>-d 17</code> or a fuller level, and keep Post 1&#39;s warning in mind
+about what a partial dump can support.</p>
+<p>If you land in the crash kernel but cannot log in, the dump is still
+sitting in <code>/proc/vmcore</code> — until the machine is reset. Fix
+the login problem, do not reboot.</p>
+<p>Get the file to the machine where you run <code>crash</code>.</p>
+<h2 id="what-the-dump-can-and-cannot-answer">What the dump can and
+cannot answer</h2>
+<p><code>-d</code> is a level, and the level decides which questions
+survive:</p>
+<table>
+<thead>
+<tr>
+<th>flag</th>
+<th>pages written</th>
+<th>what it costs you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-d 31</code></td>
+<td>no zero, cache, cache-private, user, free</td>
+<td>user stacks and page-cache contents are gone</td>
+</tr>
+<tr>
+<td><code>-d 17</code></td>
+<td>keeps user pages, drops zero/cache/free</td>
+<td>larger, but user memory is readable</td>
+</tr>
+<tr>
+<td><code>-d 0</code></td>
+<td>everything</td>
+<td>2 GB of guest RAM becomes a 2 GB file</td>
+</tr>
+</tbody>
+</table>
+<p>For the first arc of this series, <code>-d 31</code> is enough:
+kernel stacks, task structures, slab, and the log are all in the dump.
+The moment a post asks about a userspace buffer or a page-cache page,
+the same crash has to be re-captured at a lower level. Decide the level
+from the question, not from habit.</p>
+<h2 id="open-it">Open it</h2>
+<p>With the matching <code>vmlinux</code>:</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore</span></code></pre></div>
+<p>The banner is Post 1&#39;s. The smoke test is the point of this post:</p>
+<pre><code>crash&gt; bt
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+ #2 [ffffc90000e6bc60] crash_kexec at ffffffff81191ffb
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+ #5 [ffffc90000e6bd10] exc_page_fault at ffffffff8166d18c
+ #6 [ffffc90000e6bd60] asm_exc_page_fault at ffffffff810011b6
+    [exception RIP: crashlab_trigger_write.cold+63]
+    RIP: ffffffffa00000a2  RSP: ffffc90000e6be18  RFLAGS: 00010286
+    [...]
+ #7 [ffffc90000e6be30] full_proxy_write at ffffffff8136ec89
+ #8 [ffffc90000e6be68] vfs_write at ffffffff81250f1d
+ #9 [ffffc90000e6bee8] ksys_write at ffffffff812513e6
+#10 [ffffc90000e6bf18] do_syscall_64 at ffffffff816690c6
+#11 [ffffc90000e6bf40] entry_SYSCALL_64_after_hwframe at ffffffff810000b0</code></pre>
+<pre><code>crash&gt; kmem -i
+                 PAGES        TOTAL      PERCENTAGE
+    TOTAL MEM   440931       1.7 GB         ----
+         FREE   409488       1.6 GB   92% of TOTAL MEM
+         USED    31443     122.8 MB    7% of TOTAL MEM
+      BUFFERS        0            0    0% of TOTAL MEM
+       CACHED    16567      64.7 MB    3% of TOTAL MEM
+         SLAB     3365      13.1 MB    0% of TOTAL MEM</code></pre>
+<p>Those numbers are computed from whatever page structures survived
+<code>-d 31</code>, so they are not the machine&#39;s real memory usage:
+this dump reports 92% free on a booted systemd guest, and
+<code>crash</code> 9.0.2 reported 97% for the same file. On a partial
+dump, read <code>kmem -i</code> as a shape, not a ledger.
+<code>kmem -s</code> lists slab caches and their object counts, which is
+a different question from total memory use.</p>
+<p>The stack is complete under ORC with no frame pointers, which matters
+for Post 6, and the module frame is symbolized even though the module&#39;s
+data symbols are not. The <code>-s</code> flag is what makes it
+scriptable: without it the pager waits for you.</p>
+<h2 id="the-qemu-monitor-fallback">The QEMU monitor fallback</h2>
+<p>kdump can fail: not armed, no reserved memory, the crash kernel
+panics too. Inside QEMU there is always another way, and it is worth
+knowing the shape of what you get:</p>
+<pre><code>(qemu) stop
+(qemu) dump-guest-memory /path/vmcore.elf
+warning: guest note is not present
+(qemu) cont</code></pre>
+<p>The <code>warning: guest note is not present</code> is the honest
+part. This dump has <code>NOTE</code> and <code>LOAD</code> segments and
+per-CPU registers, but no <code>VMCOREINFO</code>, because a live guest
+never wrote one. <code>crash</code> opens it and tells you:</p>
+<pre><code>crash: cannot read vmcoreinfo_data
+       PANIC: &quot;&quot;</code></pre>
+<p>No panic task, no panic string, and the dump is a snapshot of a
+running machine rather than a dying one. Useful, but strictly less than
+a kdump dump. Stop the guest before dumping, or the pages are
+inconsistent.</p>
+<h2 id="kaslr-briefly">KASLR, briefly</h2>
+<p><code>CONFIG_RANDOMIZE_BASE</code> is off in this lab, so the
+addresses in <code>vmlinux</code> are the addresses in the dump, and you
+never touch <code>--kaslr</code>. If a dump has KASLR on, the load
+offset is in the notes and <code>crash</code> can find it with
+<code>--kaslr auto</code>; a dump that lost its notes needs
+<code>--kaslr &lt;offset&gt;</code> from the panic log&#39;s
+<code>Kernel Offset:</code> line. When KASLR is on, every address you
+read is base-relative, and the first thing to check is that
+<code>crash</code> found the offset.</p>
+<h2 id="traps">Traps</h2>
+<ul>
+<li><code>bzImage</code> is not a namelist; the build-tree
+<code>vmlinux</code> is.</li>
+<li><code>CONFIG_TRIM_UNUSED_KSYMS</code> will silently un-export what
+your module needs. Keep the whitelist with the lab.</li>
+<li><code>DEBUG_INFO_REDUCED</code> and <code>DEBUG_INFO_SPLIT</code>
+produce kernels that build and boot and cannot be debugged
+properly.</li>
+<li>A rebuild after a config change is a different namelist even if the
+release string matches.</li>
+<li>The <code>bzImage</code> your machine boots and the one
+<code>kexec -p</code> loads must be the same build, byte for byte.</li>
+<li><code>kexec -p</code> before the panic, always, and check
+<code>/sys/kernel/kexec_crash_loaded</code> after.</li>
+<li>A plain NULL deref only oopses. Without <code>panic_on_oops=1</code>
+the guest survives and kdump never runs.</li>
+<li><code>--reuse-cmdline</code> must carry
+<code>crashkernel=256M</code>; without a reservation there is nowhere to
+put the crash kernel.</li>
+<li><code>makedumpfile -d 31</code> loses user pages and page cache.
+Choose the level for the question you are going to ask.</li>
+<li><code>makedumpfile</code>&#39;s version warning on a newer kernel is
+cosmetic; the kdump boot log is the authority on whether the dump is
+valid.</li>
+<li>If <code>make defconfig</code> fails with
+<code>gcc: unknown assembler invoked</code>, look at your compiler
+wrapper before your toolchain: a ccache that cannot write its cache
+directory produces exactly that message.</li>
+</ul>
+<h2 id="exercises">Exercises</h2>
+<ol type="1">
+<li>Why must the <code>bzImage</code> loaded by <code>kexec -p</code>
+match the one the machine booted?</li>
+<li>Which config options make <code>struct task_struct</code> usable in
+<code>crash</code> even though the kernel has &quot;debug info&quot;?</li>
+<li>What does <code>--no_panic</code> change, and when is it the right
+flag?</li>
+<li><code>kexec -p</code> returns 0, so you crash the machine. It
+reboots instead of entering kdump. What are the first two things you
+check?</li>
+</ol>
+<p>Answers, with the evidence for each, are in <a href="answers.html"><code>answers.md</code></a>.</p>
+<h2 id="the-commands-in-this-post">The commands in this post</h2>
+<table>
+<thead>
+<tr>
+<th>where</th>
+<th>command</th>
+<th>what it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>build</td>
+<td><code>make -j&quot;$(nproc)&quot; bzImage modules</code></td>
+<td>the artifacts exist and match the config</td>
+</tr>
+<tr>
+<td>build</td>
+<td><code>modinfo crashlab.ko</code></td>
+<td>vermagic matches the kernel</td>
+</tr>
+<tr>
+<td>host</td>
+<td><code>sha256sum</code> on both <code>bzImage</code> copies</td>
+<td>the boot and kexec images are the same</td>
+</tr>
+<tr>
+<td>guest</td>
+<td><code>insmod</code>,
+<code>echo 1 &gt; /proc/sys/kernel/panic_on_oops</code></td>
+<td>the trigger is armed and fatal</td>
+</tr>
+<tr>
+<td>guest</td>
+<td><code>kexec -p</code>,
+<code>cat /sys/kernel/kexec_crash_loaded</code></td>
+<td>the crash kernel is really armed</td>
+</tr>
+<tr>
+<td>guest</td>
+<td><code>echo null &gt; /sys/kernel/debug/crashlab/trigger</code></td>
+<td>the oops</td>
+</tr>
+<tr>
+<td>kdump</td>
+<td><code>makedumpfile -l -d 31 /proc/vmcore /root/vmcore</code></td>
+<td>the dump, filtered</td>
+</tr>
+<tr>
+<td>host</td>
+<td><code>crash -s vmlinux vmcore</code></td>
+<td>the session</td>
+</tr>
+<tr>
+<td>host</td>
+<td>monitor <code>dump-guest-memory</code></td>
+<td>the fallback dump, without kdump</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fidelity-checklist">Fidelity checklist</h2>
+<p>Before you believe a session, the answers to these should all be
+yes:</p>
+<ul>
+<li>the <code>vmlinux</code> build ID matches the dump&#39;s
+<code>crash --build-id</code>;</li>
+<li>the machine type and CPU count in the banner match the machine you
+crashed;</li>
+<li><code>[TAINTED]</code> and <code>[PARTIAL DUMP]</code>, if present,
+are explained rather than ignored;</li>
+<li>the kernel config in <code>vmlinux</code> is the one you think you
+built (<code>DEBUG_INFO</code>, no <code>REDUCED</code>, no
+<code>SPLIT</code>);</li>
+<li>module symbols resolve, or you know why they do not;</li>
+<li>the first command you ran did not print a warning you skipped
+past.</li>
+</ul>
+<p>None of that requires a particular VM, rootfs, or hypervisor. It only
+requires that the two files came from the same build.</p>
+<hr />
+<p><strong>Versions.</strong> Kernel <code>7.3.0+</code> (x86_64, no
+KASLR, DWARF5, <code>UNWINDER_ORC=y</code>,
+<code>KALLSYMS_ALL=n</code>); <code>crash 9.0.3++</code>;
+<code>makedumpfile 1.7.9++</code>; QEMU 10.1.2; GCC 15.2.1. Addresses
+and build numbers vary between builds and runs.</p>
+<p>Previous: <a href="../01-what-crash-is/">Post 1 — What crash is, and
+what it needs</a>.</p>
+</body>
+</html>

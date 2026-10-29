@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Symbols, types, addresses — answers</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="answers--symbols-types-addresses">Answers — Symbols, types,
+addresses</h1>
+<h2 id="1-the-second-ordinary-object">1. The second ordinary object</h2>
+<p>The head address comes from <code>dmesg</code>, because the module&#39;s
+data symbols are not in kallsyms:</p>
+<pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
+<p>Walk it:</p>
+<pre><code>crash&gt; mod -S ~/crash-lab/crashlab
+crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0</code></pre>
+<p>The entries are <code>root</code> (the head&#39;s container),
+<code>alpha</code>, <code>beta</code>, <code>gamma</code>. The addresses
+printed are <code>list_head</code> addresses; subtract the offset
+<code>0x20</code> to get object addresses:</p>
+<table>
+<thead>
+<tr>
+<th>entry</th>
+<th>node address</th>
+<th>object address</th>
+<th>name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>root</td>
+<td><code>ffffffffa02010e0</code></td>
+<td><code>ffffffffa02010c0</code></td>
+<td><code>root</code></td>
+</tr>
+<tr>
+<td>alpha</td>
+<td><code>ffffffffa0201040</code></td>
+<td><code>ffffffffa0201020</code></td>
+<td><code>alpha</code></td>
+</tr>
+<tr>
+<td>beta</td>
+<td><code>ffffffffa0201070</code></td>
+<td><code>ffffffffa0201050</code></td>
+<td><code>beta</code></td>
+</tr>
+<tr>
+<td>gamma</td>
+<td><code>ffffffffa02010a0</code></td>
+<td><code>ffffffffa0201080</code></td>
+<td><code>gamma</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>second ordinary object</strong> is <code>beta</code>:</p>
+<pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201050
+struct crashlab_obj {
+  magic = 1129070914,
+  name = &quot;beta\000\000\000\000\000\000\000\000\000\000\000&quot;,
+  value = 8192,
+  node = {
+    next = 0xffffffffa02010a0 &lt;_MODULE_DATA_START_crashlab+160&gt;,
+    prev = 0xffffffffa0201040 &lt;_MODULE_DATA_START_crashlab+64&gt;
+  }
+}</code></pre>
+<p><code>magic = 1129070914</code> is <code>0x434c4142</code>, the four
+bytes <code>&quot;CLAB&quot;</code>. The offset came from either
+<code>-l crashlab_obj.node</code> in the list command or from
+<code>p &amp;((struct crashlab_obj *)0)-&gt;node</code>
+(<code>0x20</code>), which is the same number read a different way.</p>
+<h2 id="2-virtual-to-physical-and-back">2. Virtual to physical and
+back</h2>
+<pre><code>crash&gt; vtop 0xffffffffa0201020
+VIRTUAL           PHYSICAL
+ffffffffa0201020  30ee020
+
+      PTE         PHYSICAL  FLAGS
+80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
+<p><strong>Flags:</strong> <code>PRESENT</code> (the mapping exists),
+<code>RW</code> (writable), <code>ACCESSED</code>, <code>DIRTY</code>,
+<code>GLOBAL</code> (not flushed on a context switch, which is why
+kernel mappings are tagged this way), <code>NX</code> (not executable —
+data page).</p>
+<p>Going back:</p>
+<pre><code>crash&gt; ptov 0x30ee020
+ffff8880030ee020</code></pre>
+<p><strong>Why it is not the address you started from:</strong> the
+module address <code>ffffffffa0201020</code> and the direct-map address
+<code>ffff8880030ee020</code> are two different virtual mappings of the
+same physical page. <code>ptov</code> returns the direct-map alias by
+construction; the module mapping lives in the vmalloc region. If you
+need the module&#39;s own address again, you keep it, or you rebuild it from
+the module base plus the offset — you do not get it back from
+<code>ptov</code>.</p>
+<p><code>pte 80000000030ee163</code> prints the same flags from the raw
+PTE value, which is the way to check a PTE you found somewhere other
+than <code>vtop</code>.</p>
+<h2 id="3-definition-versus-contents">3. Definition versus contents</h2>
+<ul>
+<li><p><strong>Definition:</strong>
+<code>whatis struct kmem_cache</code> prints the type, its members and
+their types, and the size:</p>
+<pre><code>crash&gt; whatis struct kmem_cache
+struct kmem_cache {
+    struct slub_percpu_sheaves *cpu_sheaves;
+    slab_flags_t flags;
+    unsigned long min_partial;
+    unsigned int size;
+    ...
+}</code></pre></li>
+<li><p><strong>Contents at a specific address:</strong>
+<code>struct kmem_cache &lt;address&gt;</code>.</p></li>
+</ul>
+<p>The distinction is the one the post is built on: <code>whatis</code>
+answers <em>what the type looks like</em>, <code>struct</code> answers
+<em>what is in this object</em>. On this kernel there is a wrinkle when
+looking for a cache address: <code>kmem -s</code> refuses to walk the
+slab list because the kernel was built without
+<code>CONFIG_SLUB_DEBUG</code>:</p>
+<pre><code>crash&gt; kmem -s
+kmem: option requires kmem_cache_node.nr_slabs member!
+(the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre>
+<p>That is a config limitation, not a symbol problem. The address can
+still come from a structure that points at a cache (<code>p</code> on
+the right field), and <code>whatis struct kmem_cache</code> works either
+way.</p>
+</body>
+</html>

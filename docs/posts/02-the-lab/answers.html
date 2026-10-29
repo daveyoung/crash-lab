@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>The lab: build a kernel you can crash, and a dump you can read
+— answers</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="answers--the-lab-build-a-kernel-you-can-crash-and-a-dump-you-can-read">Answers
+— The lab: build a kernel you can crash, and a dump you can read</h1>
+<h2 id="1-why-must-the-bzimage-loaded-by-kexec--p-match-the-one-the-machine-booted">1.
+Why must the <code>bzImage</code> loaded by <code>kexec -p</code> match
+the one the machine booted?</h2>
+<p><strong>Answer:</strong> because the crash kernel is the environment
+that captures the dump, and every difference is a variable you did not
+intend to introduce.</p>
+<p>The strict requirement is on the <em>crashed</em> kernel: the dump is
+its memory, so the <code>vmlinux</code> you analyze with must be its
+exact build. The <code>kexec -p</code> image is the second kernel that
+boots after the panic. It is the one that exposes
+<code>/proc/vmcore</code> and runs <code>makedumpfile</code>, so it
+needs <code>CONFIG_PROC_VMCORE</code> and the drivers to write your
+dump. A stale image from an earlier build may lack either.</p>
+<p>There is also a quieter failure: when the stale image <em>does</em>
+work, nothing tells you that the machine you are capturing from is not
+the machine you tested. The lab keeps both copies identical and checks
+with <code>sha256sum</code>, because the check is one command.</p>
+<p><strong>Related trap:</strong> <code>--reuse-cmdline</code> is what
+carries <code>crashkernel=256M</code> into the crash kernel. If the
+reused command line lacks that reservation, the crash kernel has nowhere
+to live and kdump cannot start.</p>
+<h2 id="2-which-config-options-make-struct-task_struct-usable">2. Which
+config options make <code>struct task_struct</code> usable?</h2>
+<p><strong>Answer:</strong> <code>CONFIG_DEBUG_INFO=y</code> with a full
+DWARF variant (<code>CONFIG_DEBUG_INFO_DWARF5=y</code> here), and
+specifically <em>not</em> <code>CONFIG_DEBUG_INFO_REDUCED</code> or
+<code>CONFIG_DEBUG_INFO_SPLIT</code>.</p>
+<p><code>CONFIG_DEBUG_INFO</code> alone means &quot;emit DWARF&quot;. The two
+options that quietly break <code>crash</code> are:</p>
+<ul>
+<li><code>DEBUG_INFO_REDUCED</code>: drops struct members and other
+detail to shrink the image. <code>struct task_struct</code> still
+exists, but members you ask for may be missing, so <code>ps</code> and
+every pointer chase through a task become unreliable.</li>
+<li><code>DEBUG_INFO_SPLIT</code>: moves type information into
+<code>.dwo</code> files beside the object files. <code>vmlinux</code>
+alone then does not contain the types <code>crash</code> needs, and the
+usual symptom is a session that opens and then fails on structs.</li>
+</ul>
+<p>Symbols come from <code>CONFIG_KALLSYMS</code>, which is separate: it
+gives names and addresses, and <code>KALLSYMS_ALL</code> extends that to
+data symbols. Symbols are not types.</p>
+<p><strong>Proof in this lab:</strong> <code>struct task_struct</code>
+prints in full, ending with <code>SIZE: 2624</code>, and
+<code>ps -S</code> walks all 94 tasks.</p>
+<h2 id="3-what-does---no_panic-change">3. What does
+<code>--no_panic</code> change?</h2>
+<p><strong>Answer:</strong> it stops <code>crash</code> from trying to
+identify the task that was running when the kernel died, and sets the
+initial context to the <code>swapper</code> task on CPU 0 instead.</p>
+<p>That matters when the dump has no panic task to find: a QEMU monitor
+<code>dump-guest-memory</code> of a running guest, a dump taken after
+<code>panic_on_oops=0</code> where nothing panicked, or a kdump whose
+notes did not survive. In the live QEMU dump from this lab,
+<code>crash</code> says so and defaults there anyway:</p>
+<pre><code>crash: cannot read vmcoreinfo_data
+       PANIC: &quot;&quot;
+PID: 0        TASK: ffffffff81a0a680  CPU: 0    COMMAND: &quot;swapper/0&quot;</code></pre>
+<p><strong>When it is the right flag:</strong> when you know there is no
+panic context and you want a deterministic starting point for commands
+that are context-sensitive (<code>bt</code> without <code>-a</code>,
+<code>files</code>, <code>vm</code>).</p>
+<p><strong>When it is the wrong tool:</strong> never use it to silence a
+warning caused by a mismatched <code>vmlinux</code> or missing symbols.
+It changes which task you start on, not whether the namelist is
+correct.</p>
+<h2 id="4-kexec--p-returned-0-but-the-machine-rebooted-instead-of-entering-kdump">4.
+<code>kexec -p</code> returned 0, but the machine rebooted instead of
+entering kdump</h2>
+<p><strong>Answer:</strong> the first two checks are that a crash kernel
+was actually armed, and that the reservation existed and was carried
+into it.</p>
+<ol type="1">
+<li><p><strong>Was it armed, not just loaded?</strong>
+<code>kexec -p</code> succeeding and
+<code>/sys/kernel/kexec_crash_loaded</code> reading <code>1</code> are
+two different facts:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span> /sys/kernel/kexec_crash_loaded</span></code></pre></div>
+<p>If this was not <code>1</code> before the panic, kdump could not have
+run. A second signal is in the oops header itself:
+<code>Kdump: loaded</code> appears only when the kernel knew a crash
+kernel was armed.</p></li>
+<li><p><strong>Was there memory reserved for it?</strong> The
+reservation comes from <code>crashkernel=</code> on the command line,
+and <code>--reuse-cmdline</code> has to carry it:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">grep</span> <span class="at">-i</span> crash /proc/iomem</span></code></pre></div>
+<p>No <code>Crash kernel</code> range means the crash kernel had nowhere
+to live, whatever <code>kexec -p</code> reported.</p></li>
+</ol>
+<p>If both are fine, the next suspects are that the oops never became a
+panic (no <code>panic_on_oops=1</code>, or an oops that the kernel
+recovered from) and that the crash kernel started but died before it
+could write anything. The serial console of the second boot — not the
+first — is where that story is.</p>
+</body>
+</html>

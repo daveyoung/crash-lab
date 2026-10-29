@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Symbols, types, addresses</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="symbols-types-addresses">Symbols, types, addresses</h1>
+<p><strong><code>crash</code> reads two tables: one maps names to
+addresses, the other maps addresses to meaning. Most of the confusion in
+postmortem work comes from asking one table a question that belongs to
+the other.</strong></p>
+<p>Start with a bare address:</p>
+<pre><code>crash&gt; p 0xffffffffa0201020
+$1 = 18446744072101040160</code></pre>
+<p>That is the pointer&#39;s value, printed in decimal, and it tells you
+nothing. Now ask the same address a typed question:</p>
+<pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201020
+struct crashlab_obj {
+  magic = 1129070914,
+  name = &quot;alpha\000\000\000\000\000\000\000\000\000\000&quot;,
+  value = 4096,
+  node = {
+    next = 0xffffffffa0201070 &lt;_MODULE_DATA_START_crashlab+112&gt;,
+    prev = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;
+  }
+}</code></pre>
+<p>Same address. One answer is a number; the other is an object in a
+list. The difference is the type system, and using it deliberately is
+what this post is about.</p>
+<h2 id="two-tables-and-what-each-one-knows">Two tables, and what each
+one knows</h2>
+<ul>
+<li><strong>The symbol table</strong> answers <em>where</em>: a name in,
+an address out, or the reverse. On x86_64 with
+<code>CONFIG_KALLSYMS</code> it is built into the kernel, and
+<code>crash</code> also reads the ELF symbol table from
+<code>vmlinux</code>.</li>
+<li><strong>DWARF</strong> answers <em>what</em>: given a type name, it
+gives you the layout; given an address and a type, <code>crash</code>
+can read fields. DWARF is what <code>whatis</code> and
+<code>struct</code> use.</li>
+</ul>
+<p>The symbol side is easy to see:</p>
+<pre><code>crash&gt; sym crashlab_trigger_write.cold
+ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]</code></pre>
+<p>Function symbols like that one come from the kernel&#39;s kallsyms, which
+is why they resolve even for a module whose debug info has not been
+loaded. Data is different. This kernel runs with
+<code>CONFIG_KALLSYMS_ALL=n</code>, so module <em>data</em> symbols are
+not in the table — <code>sym crashlab_root</code> fails. That is why the
+module prints its own list address at load time:</p>
+<pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
+<p>An address from <code>dmesg</code> is a perfectly good starting
+point. From here on, the type system does the work.</p>
+<h3 id="reading-the-symbol-table">Reading the symbol table</h3>
+<p><code>sym</code> prints a type letter with every hit, and the letter
+is worth knowing:</p>
+<pre><code>crash&gt; sym -q crashlab
+ffffffffa0000000 (t) crashlab_trigger_write [crashlab]
+ffffffffa0000070 (t) crashlab_free_list [crashlab]
+ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]
+ffffffffa0000110 (t) crashlab_exit [crashlab]</code></pre>
+<p><code>t</code>/<code>T</code> is text (local/global),
+<code>d</code>/<code>D</code> data, <code>b</code>/<code>B</code> bss,
+<code>r</code>/<code>R</code> read-only data, <code>A</code> absolute.
+<code>-q</code> filters by substring, which beats paging through
+<code>sym -l</code>. When you have an address that falls
+<em>between</em> two symbols, <code>-p</code> and <code>-n</code> show
+the neighbours:</p>
+<pre><code>crash&gt; sym -p crashlab_trigger_write.cold
+ffffffffa0000070 (t) crashlab_free_list [crashlab]
+ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]</code></pre>
+<p>That is often the fastest answer to &quot;what is this address near?&quot;
+before you commit to a disassembly.</p>
+<h3 id="type-names-that-are-not-structs">Type names that are not
+structs</h3>
+<p><code>whatis</code> resolves typedefs and unions as well as
+structs:</p>
+<pre><code>crash&gt; whatis slab_flags_t
+typedef unsigned int slab_flags_t;
+SIZE: 4</code></pre>
+<p>Worth doing when a member prints as a bare number and you are about
+to mask or shift it: the width is part of the type, not the value.</p>
+<h2 id="mod--s-teaching-crash-about-a-modules-types"><code>mod -S</code>:
+teaching <code>crash</code> about a module&#39;s types</h2>
+<p>The module defines <code>struct crashlab_obj</code>, so its layout is
+in <code>crashlab.ko</code>, not in <code>vmlinux</code>. Before you
+point <code>crash</code> at the module, it cannot resolve the type:</p>
+<pre><code>crash&gt; whatis struct crashlab_obj
+whatis: cannot resolve: struct crashlab_obj</code></pre>
+<p><code>mod -S</code> loads the module&#39;s debug info and relocates it
+against the module&#39;s load address in the dump:</p>
+<pre><code>crash&gt; mod -S ~/crash-lab/crashlab
+     MODULE       NAME         TEXT_BASE       SIZE  OBJECT FILE
+ffffffffa0201100  crashlab  ffffffffa0000000  12288  ~/crash-lab/crashlab/crashlab.ko
+
+crash&gt; whatis struct crashlab_obj
+struct crashlab_obj {
+    u32 magic;
+    char name[16];
+    unsigned long value;
+    struct list_head node;
+}
+SIZE: 48</code></pre>
+<p>One trap comes with this, and it is a quiet one. After
+<code>mod -S</code>, <code>crash</code> knows the name
+<code>crashlab_root</code> but not where it was relocated to:</p>
+<pre><code>crash&gt; p &amp;crashlab_root
+$1 = (struct crashlab_obj *) 0x1c0</code></pre>
+<p><code>0x1c0</code> is an offset inside the object file, not a kernel
+address. Use the address the module printed, or an address you read out
+of another structure; do not trust a module data symbol to be relocated.
+Post 17 comes back to this.</p>
+<h2 id="address-to-object">Address to object</h2>
+<p>With the type known, an address becomes readable. The three forms are
+equivalent, and differ only in how much they print:</p>
+<pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201020        # the whole object
+crash&gt; p ((struct crashlab_obj *)0xffffffffa0201020)-&gt;magic
+$1 = 1129070914
+crash&gt; px ((struct crashlab_obj *)0xffffffffa0201020)-&gt;value
+$2 = 0x1000</code></pre>
+<p><code>struct</code> is the readable one; <code>p</code> with a cast
+is the scriptable one; <code>px</code> is <code>p</code> in hexadecimal,
+which matters because the default radix here is decimal.
+<code>1129070914</code> is <code>0x434c4142</code>, four bytes that read
+<code>&quot;CLAB&quot;</code> — the magic the module writes into every object.</p>
+<p>You can ask for the offset of a member the same way, without an
+object at all:</p>
+<pre><code>crash&gt; p &amp;((struct crashlab_obj *)0)-&gt;node
+$1 = (struct list_head *) 0x20</code></pre>
+<p>Zero is a legal &quot;address&quot; for offset arithmetic, and this is the
+standard trick for getting <code>offsetof()</code> out of a dump.</p>
+<p><code>whatis</code> also accepts a symbol, which is where the two
+tables meet:</p>
+<pre><code>crash&gt; whatis init_task
+struct task_struct init_task;
+
+crash&gt; p init_task.pid
+$1 = 0</code></pre>
+<p>The symbol table supplied the address, the type supplied the layout,
+and the value came out of the dump.</p>
+<h2 id="walking-the-list">Walking the list</h2>
+<p>The module built a four-entry circular list: a head embedded in a
+root object, then <code>alpha</code>, <code>beta</code>,
+<code>gamma</code>. <code>list</code> walks it if you tell it two
+things: which member is the linkage (<code>-s struct.member</code>) and
+what the offset is from that linkage back to the object
+(<code>-l</code>).</p>
+<pre><code>crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0
+ffffffffa02010e0
+  node = {
+    next = 0xffffffffa0201040 &lt;_MODULE_DATA_START_crashlab+64&gt;,
+    prev = 0xffffffffa02010a0 &lt;_MODULE_DATA_START_crashlab+160&gt;
+  },
+ffffffffa0201040
+  node = {
+    next = 0xffffffffa0201070 &lt;_MODULE_DATA_START_crashlab+112&gt;,
+    prev = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;
+  },
+ffffffffa0201070
+  node = {
+    next = 0xffffffffa02010a0 &lt;_MODULE_DATA_START_crashlab+160&gt;,
+    prev = 0xffffffffa0201040 &lt;_MODULE_DATA_START_crashlab+64&gt;
+  },
+ffffffffa02010a0
+  node = {
+    next = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;,
+    prev = 0xffffffffa0201070 &lt;_MODULE_DATA_START_crashlab+112&gt;
+  },</code></pre>
+<p>The addresses printed are <strong>list_head addresses</strong>, not
+object addresses: the first is the head itself, and the walk returns to
+it after <code>gamma</code>. <code>-r</code> walks backwards through
+<code>prev</code>, and <code>-o &lt;offset&gt;</code> is the other
+spelling of <code>-l</code> for lists whose linkage is at a fixed byte
+offset.</p>
+<p>If the list is headed by a standalone <code>LIST_HEAD()</code> rather
+than an embedded head, drop <code>-l</code> and give <code>list</code>
+the first object address with <code>-o</code>; the rest is the same.</p>
+<h2 id="container_of-by-hand"><code>container_of</code>, by hand</h2>
+<p>The list gives you the linkage. The object is
+<code>node - offset</code>, and doing that arithmetic once makes every
+later list easier to trust. <code>gamma</code>&#39;s node is at
+<code>0xffffffffa02010a0</code>, and the offset is
+<code>0x20</code>:</p>
+<pre><code>crash&gt; eval (0xffffffffa02010a0 - 0x20)
+hexadecimal: ffffffffa0201080
+    decimal: 18446744072101040256  (-1608511360)</code></pre>
+<p><code>struct crashlab_obj 0xffffffffa0201080</code> prints
+<code>name = &quot;gamma&quot;</code> and <code>value = 12288</code>. That is
+<code>container_of(node, struct crashlab_obj, node)</code>, done by
+hand, and it is why the module puts <code>node</code> last: with the
+linkage at offset zero, the arithmetic would be free and the lesson
+invisible.</p>
+<h2 id="the-same-walk-on-a-real-kernel-list">The same walk on a real
+kernel list</h2>
+<p>The module&#39;s list is small on purpose, but nothing above is
+module-specific. The process list is a <code>list_head</code> in
+<code>task_struct</code>, headed by the embedded <code>tasks</code>
+member of <code>init_task</code>:</p>
+<pre><code>crash&gt; p &amp;init_task.tasks
+$1 = (struct list_head *) 0xffffffff81a0aa28 &lt;init_task+936&gt;
+
+crash&gt; list -s task_struct.tasks -l task_struct.tasks 0xffffffff81a0aa28
+ffffffff81a0aa28
+  tasks = {
+    next = 0xffff888002949fa8,
+    prev = 0xffff88807def83a8
+  },
+ffff888002949fa8
+  tasks = {
+    next = 0xffff8880029491a8,
+    prev = 0xffffffff81a0aa28 &lt;init_task+936&gt;
+  },
+[...]</code></pre>
+<p><code>init_task</code> resolves through the symbol table, so you do
+not need <code>dmesg</code> for this one, and the container offset is
+<code>936</code> (<code>0x3a8</code>). The list is circular, so the walk
+ends when it gets back to <code>init_task</code>. Subtracting it from
+any <code>tasks</code> address gives a <code>task_struct</code> you can
+hand to <code>struct</code>, which is the first step of most of the
+task-oriented posts that follow.</p>
+<h2 id="disassembly-and-source-when-you-have-it">Disassembly, and source
+when you have it</h2>
+<p><code>dis</code> shows the instructions behind a symbol:</p>
+<pre><code>crash&gt; dis crashlab_trigger_write
+0xffffffffa0000000 &lt;crashlab_trigger_write&gt;:    endbr64
+0xffffffffa0000004 &lt;crashlab_trigger_write+4&gt;:  xor    %eax,%eax
+0xffffffffa0000006 &lt;crashlab_trigger_write+6&gt;:  test   %rdx,%rdx
+0xffffffffa0000009 &lt;crashlab_trigger_write+9&gt;:  je     0xffffffffa0000062 &lt;crashlab_trigger_write+98&gt;
+[...]
+0xffffffffa0000021 &lt;crashlab_trigger_write+33&gt;: test   %rax,%rax
+0xffffffffa0000024 &lt;crashlab_trigger_write+36&gt;: jne    0xffffffffa000004e &lt;crashlab_trigger_write+78&gt;</code></pre>
+<p>and <code>-l</code> interleaves source lines, because the DWARF
+records the build path:</p>
+<pre><code>crash&gt; dis -l crashlab_trigger_write
+~/crash-lab/crashlab/crashlab.c: 90
+0xffffffffa0000000 &lt;crashlab_trigger_write&gt;:    endbr64
+~/crash-lab/crashlab/crashlab.c: 93
+0xffffffffa0000004 &lt;crashlab_trigger_write+4&gt;:  xor    %eax,%eax</code></pre>
+<p>If the build tree has moved since the dump, the recorded path is
+wrong and the lines are missing.
+<code>crash --src ~/crash-lab/linux ...</code> points it at the new
+location for kernel symbols; module paths follow the module&#39;s own
+DWARF.</p>
+<h2 id="address-translation-one-page-at-a-time">Address translation, one
+page at a time</h2>
+<p><code>vtop</code> walks the page tables for a virtual address. For
+the module&#39;s data page:</p>
+<pre><code>crash&gt; vtop 0xffffffffa0201020
+VIRTUAL           PHYSICAL
+ffffffffa0201020  30ee020
+
+PGD DIRECTORY: ffffffff81a18000
+PAGE DIRECTORY: 201a067
+   PUD: 201aff0 =&gt; 201b063
+   PMD: 201b808 =&gt; 46ac067
+   PTE: 46ac008 =&gt; 80000000030ee163
+  PAGE: 30ee000
+
+      PTE         PHYSICAL  FLAGS
+80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
+<p>That PTE value is a thing you can hand back to
+<code>crash</code>:</p>
+<pre><code>crash&gt; pte 80000000030ee163
+      PTE         PHYSICAL  FLAGS
+80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
+<p><code>pte</code> takes the PTE, not the virtual address; getting that
+wrong produces a confusing lookup rather than an error.
+<code>ptov</code> goes the other way, from physical to virtual, and it
+returns the <strong>direct-map</strong> address, not the module address
+you started from:</p>
+<pre><code>crash&gt; ptov 0x30ee020
+ffff8880030ee020</code></pre>
+<p>Both virtual addresses name the same physical page. That is not a bug
+in the tool: a module page and its direct-map alias are two mappings,
+and knowing which one you are looking at matters when you read
+memory.</p>
+<p>The page-granularity helpers are the same arithmetic:
+<code>btop &lt;addr&gt;</code> gives the page number,
+<code>ptob &lt;page&gt;</code> gives the page-aligned byte address.</p>
+<pre><code>crash&gt; btop 0x30ee020
+30ee020: 30ee
+crash&gt; ptob 30ee
+30ee: 30ee000</code></pre>
+<h2 id="kaslr-and-when-the-two-tables-disagree">KASLR, and when the two
+tables disagree</h2>
+<p>This kernel has <code>CONFIG_RANDOMIZE_BASE=n</code>, so symbol
+addresses in <code>vmlinux</code> are the runtime addresses in the dump,
+and none of the above needed a slide. With KASLR on, every address
+shifts by a per-boot offset, the file&#39;s symbols no longer match memory,
+and <code>crash</code> needs the offset from the dump&#39;s notes:
+<code>--kaslr auto</code> when the notes survived,
+<code>--kaslr &lt;offset&gt;</code> from the panic log&#39;s
+<code>Kernel Offset:</code> line when they did not. The type system is
+unaffected — the offset moves addresses, not layouts — but every
+<code>sym</code> answer is.</p>
+<h2 id="when-the-list-is-a-tree">When the &quot;list&quot; is a tree</h2>
+<p><code>list</code> follows <code>next</code>/<code>prev</code>. Kernel
+code also threads structures through radix trees, XArrays, maple trees,
+and rbtrees, and those are not linked lists: <code>crash</code> walks
+them with <code>tree -t xarray|maple|rbtree &lt;root&gt;</code> and the
+same <code>-s</code>/<code>-l</code> idea for the entry type. If a
+structure has a <code>list_head</code> and you cannot find your object
+in it, check whether you are looking at the wrong member:
+<code>whatis struct &lt;type&gt;</code> lists all of them, and the one
+you want may be a tree node.</p>
+<h2 id="commands-that-need-a-config-option-this-lab-does-not-have">Commands
+that need a config option this lab does not have</h2>
+<p>Some of the toolset only pays off with kernel options this lab leaves
+off. The command shapes are still worth knowing, because a rebuild is
+all that stands between you and using them:</p>
+<ul>
+<li><p><strong><code>rustfilt &lt;symbol&gt;</code></strong> — demangles
+Rust symbols (<code>_RNv...</code>) into
+<code>crate::module::function</code>. It needs
+<code>CONFIG_RUST=y</code>; with Rust off there is nothing mangled to
+translate, which is why this post has no transcript for it. When it does
+apply, <code>sym</code> and <code>bt</code> show the mangled name and
+<code>rustfilt</code> gives you the readable one.</p></li>
+<li><p><strong><code>tree -t xarray|maple|rbtree &lt;root&gt;</code></strong>
+— walks a tree instead of a <code>list_head</code>. The root address
+comes from the structure that owns it, for example
+<code>p &amp;&lt;task&gt;-&gt;mm-&gt;mm_mt</code> for the maple tree of
+VMAs, and <code>-s</code>/<code>-l</code> describe entries the same way
+<code>list</code> does. Reach for it when the member you found is a tree
+node rather than a list linkage.</p></li>
+<li><p><strong><code>kmem -s</code></strong> — the slab walk requires
+<code>CONFIG_SLUB_DEBUG=y</code>. Without it, <code>crash</code> says
+exactly that:</p>
+<pre><code>crash&gt; kmem -s
+kmem: option requires kmem_cache_node.nr_slabs member!
+(the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre>
+<p><code>whatis struct kmem_cache</code> still works, so the type side
+is available even when the walk is not.</p></li>
+</ul>
+<p>The general rule: when a command fails with a message naming a
+<code>CONFIG_</code> option, that message is the rebuild recipe. Add the
+option, rebuild, retake the dump — the post that needs it will say which
+one.</p>
+<h2 id="traps">Traps</h2>
+<ul>
+<li><code>p &lt;address&gt;</code> prints the pointer&#39;s value. Use
+<code>struct &lt;type&gt; &lt;address&gt;</code> or a cast.</li>
+<li><code>struct</code> wants the address of the
+<strong>object</strong>, not the address of its
+<code>list_head</code>.</li>
+<li><code>list</code> wants the linkage address with <code>-l</code>, or
+the object address with <code>-o</code>; mixing them gives plausible
+nonsense.</li>
+<li>Module types need <code>mod -S</code>; module data symbols need
+<code>CONFIG_KALLSYMS_ALL</code>. Neither is on by default in this
+lab.</li>
+<li>A module data symbol that resolves to a small value like
+<code>0x1c0</code> is an unrelocated file offset, not an address.</li>
+<li><code>vtop</code> on a user address uses the current context;
+<code>set</code> to the task first.</li>
+<li><code>pte</code> takes a PTE value, not a virtual address. Get the
+value from <code>vtop</code>.</li>
+<li><code>dis -l</code> and <code>--src</code> need the build tree where
+the DWARF says it was; check before quoting line numbers.</li>
+<li>KASLR invalidates the file-to-memory address mapping, not the
+types.</li>
+</ul>
+<h2 id="exercises">Exercises</h2>
+<ol type="1">
+<li>Walk the module&#39;s list and print the second ordinary object&#39;s
+<code>magic</code> and <code>name</code>. Which command gives you the
+object address, and what is the offset?</li>
+<li>Translate a <code>crashlab_obj</code> virtual address to physical
+and back. Which flags are set in its PTE, and why is the
+<code>ptov</code> result not the address you started from?</li>
+<li>Which command shows the definition of
+<code>struct kmem_cache</code>, and which prints the contents at a
+specific address of one?</li>
+</ol>
+<p>Answers are in <a href="answers.html"><code>answers.md</code></a>.</p>
+<h2 id="cheat-sheet">Cheat sheet</h2>
+<table>
+<thead>
+<tr>
+<th>question</th>
+<th>command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>address of a symbol</td>
+<td><code>sym &lt;name&gt;</code></td>
+</tr>
+<tr>
+<td>symbol at an address</td>
+<td><code>sym &lt;address&gt;</code></td>
+</tr>
+<tr>
+<td>what is this type</td>
+<td><code>whatis struct &lt;type&gt;</code></td>
+</tr>
+<tr>
+<td>object at an address</td>
+<td><code>struct &lt;type&gt; &lt;address&gt;</code></td>
+</tr>
+<tr>
+<td>one member</td>
+<td><code>p ((struct &lt;type&gt; *)&lt;address&gt;)-&gt;&lt;member&gt;</code></td>
+</tr>
+<tr>
+<td>hex output</td>
+<td><code>px &lt;expr&gt;</code></td>
+</tr>
+<tr>
+<td>member offset</td>
+<td><code>p &amp;((struct &lt;type&gt; *)0)-&gt;&lt;member&gt;</code></td>
+</tr>
+<tr>
+<td>load module types</td>
+<td><code>mod -S &lt;dir&gt;</code></td>
+</tr>
+<tr>
+<td>walk a list</td>
+<td><code>list -s &lt;type&gt;.&lt;member&gt; -l &lt;type&gt;.&lt;member&gt; &lt;head&gt;</code></td>
+</tr>
+<tr>
+<td>reverse</td>
+<td><code>list -r ...</code></td>
+</tr>
+<tr>
+<td>address arithmetic</td>
+<td><code>eval (&lt;a&gt; - &lt;b&gt;)</code></td>
+</tr>
+<tr>
+<td>instructions</td>
+<td><code>dis &lt;symbol&gt;</code></td>
+</tr>
+<tr>
+<td>instructions with lines</td>
+<td><code>dis -l &lt;symbol&gt;</code></td>
+</tr>
+<tr>
+<td>virtual to physical</td>
+<td><code>vtop &lt;address&gt;</code></td>
+</tr>
+<tr>
+<td>physical to virtual</td>
+<td><code>ptov &lt;physical&gt;</code></td>
+</tr>
+<tr>
+<td>decode a PTE</td>
+<td><code>pte &lt;value&gt;</code></td>
+</tr>
+<tr>
+<td>page numbers</td>
+<td><code>btop &lt;address&gt;</code>,
+<code>ptob &lt;page&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Versions.</strong> <code>crash 9.0.3++</code> (gdb 16.2);
+kernel <code>7.3.0+</code> (x86_64, DWARF5, <code>UNWINDER_ORC=y</code>,
+<code>KALLSYMS_ALL=n</code>, no KASLR); module <code>crashlab.ko</code>
+built against the same tree; dump <code>vmcore-raw</code> from
+<code>makedumpfile -l -d 31</code>. Module and heap addresses differ
+between runs; take the list head from <code>dmesg</code>.</p>
+<p>Previous: <a href="../03-the-command-language/">Post 3 — The command
+language</a>.</p>
+</body>
+</html>

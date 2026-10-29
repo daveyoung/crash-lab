@@ -1,0 +1,11 @@
+# Build products of the module
+*.o
+*.ko
+*.mod
+*.mod.c
+.*.cmd
+modules.order
+Module.symvers
+
+# Per-post local preview (docs/ is the published copy)
+preview.html
