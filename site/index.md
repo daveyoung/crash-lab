@@ -7,6 +7,9 @@ purpose.
 Twenty posts, in five parts. Finished posts are links; the rest are listed as
 planned and gain a link as they land.
 
+This lab is meant to make `crash` easier to learn.
+If you find something to improve, pull requests are welcome.
+
 <!--POSTS-->
 
 ## The module
