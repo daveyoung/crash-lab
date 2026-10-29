@@ -377,4 +377,4 @@ Answers are in [`answers.md`](answers.md).
 `UNWINDER_ORC=y`, `KALLSYMS_ALL=n`); dump `vmcore` from `makedumpfile -l -d 31`
 (kdump-compressed v6, `[PARTIAL DUMP]`). Addresses and PIDs come from one run.
 
-Previous: [Post 2 — The lab](../02-the-lab/).
+Previous: [Post 2 — The lab](../02-the-lab/index.html).

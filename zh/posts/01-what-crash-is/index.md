@@ -236,4 +236,4 @@ ffffffffa0201100  crashlab  ffffffffa0000000  12288  (not loaded)  [CONFIG_KALLS
 `makedumpfile -l -d 31`）；`crash 9.0.3++`；QEMU 10.1.2。地址和 build ID 随构建
 与运行变化。
 
-上一篇：无 · 下一篇：[搭一个能崩的内核](../02-the-lab/)
+上一篇：无 · 下一篇：[搭一个能崩的内核](../02-the-lab/index.html)

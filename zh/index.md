@@ -14,7 +14,7 @@
 
 ## 实验模块
 
-[`crashlab/`](../crashlab/) 是一个故意写坏的小内核模块：从 debugfs 触发一次空指针
+[`crashlab/`](../crashlab/index.html) 是一个故意写坏的小内核模块：从 debugfs 触发一次空指针
 解引用，另外在加载时建一条四节点的链表，方便在 dump 里手动走一遍。它会让所在机器
 panic，请只在一次性虚拟机里用。
 

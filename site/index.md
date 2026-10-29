@@ -16,7 +16,7 @@ If you find something to improve, pull requests are welcome.
 
 ## The module
 
-[`crashlab/`](crashlab/) is a small deliberately buggy kernel module: a NULL
+[`crashlab/`](crashlab/index.html) is a small deliberately buggy kernel module: a NULL
 dereference you trigger from debugfs, and a four-entry list that a dump can be
 walked by hand. It panics the machine it runs on — use a disposable VM.
 

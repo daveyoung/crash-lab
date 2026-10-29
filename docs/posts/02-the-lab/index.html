@@ -401,9 +401,9 @@ ffffffff819c71f4 r __ksymtab_debugfs_create_dir</code></pre>
 <p>The whitelist is part of the lab and grows as later posts add module
 modes. Each addition means a rebuild and a new dump.</p>
 <h2 id="build-the-module">Build the module</h2>
-<p><code>crashlab.ko</code> is the deliberately buggy module from <a href="../../crashlab/"><code>crashlab/</code></a>. Its <code>null</code>
-mode writes to address zero from the debugfs write path, so the faulting
-task is your shell and the stack is short:</p>
+<p><code>crashlab.ko</code> is the deliberately buggy module from <a href="../../crashlab/index.html"><code>crashlab/</code></a>. Its
+<code>null</code> mode writes to address zero from the debugfs write
+path, so the faulting task is your shell and the stack is short:</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">volatile</span> u32 <span class="op">*</span>p <span class="op">=</span> <span class="op">(</span><span class="dt">volatile</span> u32 <span class="op">*)</span><span class="dv">0</span><span class="op">;</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -752,7 +752,7 @@ KASLR, DWARF5, <code>UNWINDER_ORC=y</code>,
 <code>KALLSYMS_ALL=n</code>); <code>crash 9.0.3++</code>;
 <code>makedumpfile 1.7.9++</code>; QEMU 10.1.2; GCC 15.2.1. Addresses
 and build numbers vary between builds and runs.</p>
-<p>Previous: <a href="../01-what-crash-is/">Post 1 — What crash is, and
-what it needs</a>.</p>
+<p>Previous: <a href="../01-what-crash-is/index.html">Post 1 — What
+crash is, and what it needs</a>.</p>
 </body>
 </html>

@@ -383,7 +383,7 @@ ffffffff819c71f4 r __ksymtab_debugfs_create_dir</code></pre>
 <p>白名单属于实验室，后续文章每加一个模式都可能要加一行。每加一次意味着重编和新的
 dump。</p>
 <h2 id="编译模块">编译模块</h2>
-<p><code>crashlab.ko</code> 就是 <a href="../../../crashlab/"><code>crashlab/</code></a>
+<p><code>crashlab.ko</code> 就是 <a href="../../../crashlab/index.html"><code>crashlab/</code></a>
 里那个故意写坏的模块。它的 <code>null</code> 模式在 debugfs
 的写路径上写地址 0，于是出故障的任务就是你的 shell，栈很短：</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>
@@ -657,6 +657,7 @@ kdump。先查哪两件事？</li>
 KASLR，DWARF5，<code>UNWINDER_ORC=y</code>，
 <code>KALLSYMS_ALL=n</code>）；<code>crash 9.0.3++</code>；<code>makedumpfile 1.7.9++</code>；QEMU
 10.1.2； GCC 15.2.1。地址与构建号随构建和运行变化。</p>
-<p>上一篇：<a href="../01-what-crash-is/">认识 crash</a> · 下一篇：<a href="../03-the-command-language/">命令语言</a></p>
+<p>上一篇：<a href="../01-what-crash-is/index.html">认识 crash</a> ·
+下一篇：<a href="../03-the-command-language/index.html">命令语言</a></p>
 </body>
 </html>

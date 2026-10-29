@@ -110,7 +110,7 @@ ffffffff819c71f4 r __ksymtab_debugfs_create_dir
 
 ## 编译模块
 
-`crashlab.ko` 就是 [`crashlab/`](../../../crashlab/) 里那个故意写坏的模块。它的 `null` 模式在 debugfs 的写路径上写地址 0，于是出故障的任务就是你的 shell，栈很短：
+`crashlab.ko` 就是 [`crashlab/`](../../../crashlab/index.html) 里那个故意写坏的模块。它的 `null` 模式在 debugfs 的写路径上写地址 0，于是出故障的任务就是你的 shell，栈很短：
 
 ```c
 if (sysfs_streq(buf, "null")) {
@@ -373,4 +373,4 @@ crash: cannot read vmcoreinfo_data
 `KALLSYMS_ALL=n`）；`crash 9.0.3++`；`makedumpfile 1.7.9++`；QEMU 10.1.2；
 GCC 15.2.1。地址与构建号随构建和运行变化。
 
-上一篇：[认识 crash](../01-what-crash-is/) · 下一篇：[命令语言](../03-the-command-language/)
+上一篇：[认识 crash](../01-what-crash-is/index.html) · 下一篇：[命令语言](../03-the-command-language/index.html)

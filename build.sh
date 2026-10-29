@@ -67,7 +67,7 @@ make_landing() {
 			first=0
 		fi
 		if [ -f "$ROOT/$checkdir/$n-$slug/index.md" ]; then
-			printf -- '- **%s.** [%s](posts/%s-%s/)\n' "$n" "$ptitle" "$n" "$slug" >> "$list"
+			printf -- '- **%s.** [%s](posts/%s-%s/index.html)\n' "$n" "$ptitle" "$n" "$slug" >> "$list"
 		else
 			printf -- '- **%s.** *%s* — %s\n' "$n" "$ptitle" "$label" >> "$list"
 		fi

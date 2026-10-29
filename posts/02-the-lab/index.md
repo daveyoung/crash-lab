@@ -111,7 +111,7 @@ The whitelist is part of the lab and grows as later posts add module modes. Each
 
 ## Build the module
 
-`crashlab.ko` is the deliberately buggy module from [`crashlab/`](../../crashlab/). Its `null` mode writes to address zero from the debugfs write path, so the faulting task is your shell and the stack is short:
+`crashlab.ko` is the deliberately buggy module from [`crashlab/`](../../crashlab/index.html). Its `null` mode writes to address zero from the debugfs write path, so the faulting task is your shell and the stack is short:
 
 ```c
 if (sysfs_streq(buf, "null")) {
@@ -402,4 +402,4 @@ that the two files came from the same build.
 `KALLSYMS_ALL=n`); `crash 9.0.3++`; `makedumpfile 1.7.9++`; QEMU 10.1.2;
 GCC 15.2.1. Addresses and build numbers vary between builds and runs.
 
-Previous: [Post 1 — What crash is, and what it needs](../01-what-crash-is/).
+Previous: [Post 1 — What crash is, and what it needs](../01-what-crash-is/index.html).

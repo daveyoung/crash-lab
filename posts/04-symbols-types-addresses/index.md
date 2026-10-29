@@ -387,4 +387,4 @@ Answers are in [`answers.md`](answers.md).
 against the same tree; dump `vmcore-raw` from `makedumpfile -l -d 31`. Module
 and heap addresses differ between runs; take the list head from `dmesg`.
 
-Previous: [Post 3 — The command language](../03-the-command-language/).
+Previous: [Post 3 — The command language](../03-the-command-language/index.html).

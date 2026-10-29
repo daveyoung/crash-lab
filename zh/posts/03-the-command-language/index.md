@@ -324,4 +324,4 @@ crash -s --no_scroll -i triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcor
 `UNWINDER_ORC=y`，`KALLSYMS_ALL=n`）；dump `vmcore`，`makedumpfile -l -d 31`
 （kdump compressed v6，`[PARTIAL DUMP]`）。地址和 PID 来自某一次运行。
 
-上一篇：[搭一个能崩的内核](../02-the-lab/) · 下一篇：[符号、类型与地址](../04-symbols-types-addresses/)
+上一篇：[搭一个能崩的内核](../02-the-lab/index.html) · 下一篇：[符号、类型与地址](../04-symbols-types-addresses/index.html)
