@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>The panic stack</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="the-panic-stack">The panic stack</h1>
+<p><strong>The first frames of a panic trace tell you how the kernel
+died, not why. The reason is in the middle, at the exception frame, and
+the story that led there is below it.</strong></p>
+<p>Open the <code>null</code> dump and run <code>bt</code>:</p>
+<pre><code>crash&gt; bt
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+ #2 [ffffc90000e6bc60] crash_kexec at ffffffff81191ffb
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+ #5 [ffffc90000e6bd10] exc_page_fault at ffffffff8166d18c
+ #6 [ffffc90000e6bd60] asm_exc_page_fault at ffffffff810011b6
+    [exception RIP: crashlab_trigger_write.cold+63]
+    RIP: ffffffffa00000a2  RSP: ffffc90000e6be18  RFLAGS: 00010286
+    RAX: 0000000000000005  RBX: 0000000000000005  RCX: ffffffff81bfbff8
+    RDX: ffffc9000003f1c8  RSI: 0000000000000001  RDI: ffffc9000003d2c0
+    RBP: ffff888002ec6180   R8: 3fffffffffffbfff   R9: ffffffff81b87288
+    R10: bfffffffffffc000  R11: 3fffffffffffc000  R12: 000055698282ffa0
+    R13: 0000000000000005  R14: ffffc90000e6bf00  R15: ffff88800331d300
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+ #7 [ffffc90000e6be30] full_proxy_write at ffffffff8136ec89
+ #8 [ffffc90000e6be68] vfs_write at ffffffff81250f1d
+ #9 [ffffc90000e6bee8] ksys_write at ffffffff812513e6
+#10 [ffffc90000e6bf18] do_syscall_64 at ffffffff816690c6
+#11 [ffffc90000e6bf40] entry_SYSCALL_64_after_hwframe at ffffffff810000b0
+    RIP: 00007f2e8955022e  RSP: 00007ffe3f258bf0  RFLAGS: 00000202
+    ORIG_RAX: 0000000000000001  CS: 0033  SS: 002b</code></pre>
+<p>Frames 0 to 6 are not the fault. They are the kernel&#39;s death
+procedure: the page fault was reported, the oops handler decided the
+kernel had to die, and <code>kexec</code> handed the machine to the
+crash kernel. Every panic has some version of these frames; they are the
+same on a NULL deref, a BUG() and a deliberate <code>panic()</code>.</p>
+<p>The reason is the exception frame: the kernel was executing
+<code>crashlab_trigger_write.cold+63</code> when it touched memory it
+should not have. Frames 7 to 11 are how it got there: a
+<code>write(2)</code> system call went through the generic write path
+into the module.</p>
+<h2 id="start-with-the-log">Start with the log</h2>
+<p>The banner gives a one-line summary, but <code>log</code> has the
+full text, and it is the authority:</p>
+<pre><code>crash&gt; log -T | grep -E &#39;BUG:|#PF|Oops:|RIP: 0010|CR2|CPU:&#39; | head
+[Mon Oct 26 18:55:15 CST 2026] BUG: kernel NULL pointer dereference, address: 0000000000000000
+[Mon Oct 26 18:55:15 CST 2026] #PF: supervisor write access in kernel mode
+[Mon Oct 26 18:55:15 CST 2026] #PF: error_code(0x0002) - not-present page
+[Mon Oct 26 18:55:15 CST 2026] Oops: Oops: 0002 [#1] SMP
+[Mon Oct 26 18:55:15 CST 2026] CPU: 1 UID: 0 PID: 581 Comm: bash Kdump: loaded Tainted: G           O         7.3.0+ #16 PREEMPT(full)
+[Mon Oct 26 18:55:15 CST 2026] RIP: 0010:crashlab_trigger_write.cold+0x3f/0x5d [crashlab]
+[Mon Oct 26 18:55:15 CST 2026] CR2: 0000000000000000 CR3: 000000007dae6006 CR4: 0000000000172eb0</code></pre>
+<p>Four facts are already enough to describe the crash: it was a write,
+it was in process context (<code>Comm: bash</code>, not an interrupt),
+it happened on CPU 1, and the faulting address was zero.
+<code>Kdump: loaded</code> says the crash kernel was armed, which is the
+only reason there is a dump at all.</p>
+<p><code>CR2</code> is the faulting address. Do not confuse it with
+<code>RIP</code>: <code>CR2</code> says <em>where the pointer
+pointed</em>, <code>RIP</code> says <em>which instruction did the
+dereference</em>. Here <code>CR2 = 0</code> and <code>RIP</code> is
+inside the module.</p>
+<h2 id="find-the-panicking-task">Find the panicking task</h2>
+<p><code>bt -p</code> asks for the panic task directly, and it is the
+cheapest way to get the right CPU:</p>
+<pre><code>crash&gt; bt -p
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ [...]</code></pre>
+<p>If that fails — a dump without panic notes, such as a QEMU monitor
+dump — fall back to <code>bt -a</code>, where the CPU that died is the
+one whose stack has the oops path:</p>
+<pre><code>crash&gt; bt -a
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ [...]
+PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: &quot;swapper/0&quot;
+ #0 [fffffe000000dea8] crash_nmi_callback at ffffffff810dd0ef
+ #1 [fffffe000000deb0] default_do_nmi at ffffffff8166bff9
+ [...]</code></pre>
+<p>The other CPUs were idle, parked in <code>pv_native_safe_halt</code>,
+and their &quot;stack&quot; is an NMI backtrace: the crash path used an NMI to
+stop them. That shape — one CPU with an oops path, the rest in the idle
+loop — is what you expect from a single-threaded fault in process
+context.</p>
+<h2 id="read-the-stack-in-both-directions">Read the stack in both
+directions</h2>
+<p>Top-down, the numbers tell you the death path. Bottom-up, they tell
+you the story.</p>
+<ul>
+<li><strong>#11 <code>entry_SYSCALL_64_after_hwframe</code></strong> —
+the syscall entry. Everything below is userspace
+(<code>CS: 0033</code>).</li>
+<li><strong>#10 <code>do_syscall_64</code> → #9 <code>ksys_write</code>
+→ #8 <code>vfs_write</code></strong> — the generic write path. The task
+really did call <code>write()</code>.</li>
+<li><strong>#7 <code>full_proxy_write</code></strong> — debugfs&#39;s proxy,
+the layer that forwards a write to the file&#39;s own <code>write</code>
+handler.</li>
+<li><strong>#6 <code>asm_exc_page_fault</code> → #4
+<code>page_fault_oops</code> → #3 <code>oops_end</code></strong> — the
+fault was taken and judged fatal.</li>
+<li><strong>#2 <code>crash_kexec</code> → #1 <code>__crash_kexec</code>
+→ #0 <code>machine_kexec</code></strong> — the kernel left for the crash
+kernel.</li>
+</ul>
+<p>The exception frame sits between #6 and #7, and its <code>RIP</code>
+is the instruction that failed:</p>
+<pre><code>crash&gt; dis ffffffffa00000a2
+0xffffffffa00000a2 &lt;crashlab_trigger_write.cold+63&gt;:    movl   $0xdeadbeef,0x0</code></pre>
+<p>That is the whole crash in one line: store <code>0xdeadbeef</code> to
+absolute address zero. The <code>$0x0</code> is a 32-bit absolute
+addressing form, which is why the faulting address is
+<code>CR2 = 0</code> rather than some variable that happened to be
+NULL.</p>
+<p>Note the symbol: <code>crashlab_trigger_write.cold</code>. GCC splits
+a function into a hot part and an out-of-line cold part when it judges a
+branch unlikely; the NULL store landed in the cold fragment, which
+starts 0xbd bytes after the function. <code>bt</code> naming
+<code>.cold</code> is normal, not a sign of corruption. Post 4&#39;s
+<code>dis</code> covers the mechanics.</p>
+<h2 id="the--frames-in-the-log">The <code>?</code> frames in the
+log</h2>
+<p>The kernel&#39;s own Call Trace is not the same list as
+<code>crash bt</code>. In this oops it contains entries like:</p>
+<pre><code> ? filp_flush+0x4b/0x80
+ ? filp_close+0x20/0x30
+ ? do_dup2+0xa9/0x140
+ ? ksys_dup3+0x62/0xe0</code></pre>
+<p>The leading <code>?</code> marks a frame the unwinder could not
+confirm. These are leftover return addresses from earlier calls that
+happened to still be on the stack — the shell had just done
+file-descriptor work — not part of this call chain. Treat them as noise:
+the confirmed chain is the short one, entry to syscall to write to proxy
+to module.</p>
+<h2 id="the-exception-frame-is-a-structure-you-can-read">The exception
+frame is a structure you can read</h2>
+<p><code>bt -e</code> prints every exception frame the unwinder can
+find:</p>
+<pre><code>crash&gt; bt -e
+  KERNEL-MODE EXCEPTION FRAME AT: ffffc90000e6bbb8
+    [exception RIP: crashlab_trigger_write.cold+63]
+    RIP: ffffffffa00000a2  RSP: ffffc90000e6be18  RFLAGS: 00010286
+    RAX: 0000000000000005  RBX: 0000000000000005  [...]
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+
+  KERNEL-MODE EXCEPTION FRAME AT: ffffc90000e6bd68
+    [exception RIP: crashlab_trigger_write.cold+63]
+    [...]
+
+  USER-MODE EXCEPTION FRAME AT: ffffc90000e6bf48
+    [...]</code></pre>
+<p>Two kernel-mode frames with the same <code>RIP</code> are normal
+here: the oops path records the same register set at more than one point
+on the stack, and the unwinder reports each place it finds the
+signature. The user-mode frame at the bottom is the syscall&#39;s return
+frame, not a second fault.</p>
+<p>The frame is a <code>struct pt_regs</code> in memory, so you can read
+it like any other structure:</p>
+<pre><code>crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ip
+$1 = 0xffffffffa00000a2
+crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;sp
+$2 = 0xffffc90000e6be18
+crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ax
+$3 = 0x5</code></pre>
+<p><code>ip</code> matches the faulting instruction and <code>sp</code>
+matches the frame&#39;s <code>RSP</code>. That is how you check that the
+unwinder is pointing at the frame you think it is, rather than at a
+stale copy.</p>
+<h3 id="the-five-bytes-in-the-registers">The five bytes in the
+registers</h3>
+<p>The exception frame&#39;s registers are not decoration. <code>RAX</code>
+and <code>RBX</code> both hold <code>5</code>, and that is the length of
+what the task wrote: <code>echo null</code> sends <code>&quot;null\n&quot;</code>,
+five bytes. The write path copied those five bytes into the module&#39;s
+16-byte buffer, the string compared equal, and the fault followed.</p>
+<pre><code>crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ax
+$3 = 0x5</code></pre>
+<p>A register value matching an obvious user-space input is a cheap way
+to tie a kernel frame to the command someone typed. It is also a
+reminder that the module trusted its input: five bytes were enough.</p>
+<h2 id="the-stack-as-data">The stack as data</h2>
+<p><code>bt -f</code> prints the raw words alongside each frame. One of
+them is the saved return address:</p>
+<pre><code>crash&gt; bt -f
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+    ffffc90000e6bba0: ffffc90000e6bd68 ffffffff81191acc
+ [...]
+    ffffc90000e6bc30: ffffffffffffffff ffffffffa00000a2</code></pre>
+<p><code>ffffffffa00000a2</code> on the stack is the same value as the
+exception <code>RIP</code>; <code>ffffffff81191acc</code> is
+<code>__crash_kexec</code>, the return address into the caller. When
+symbols are missing or wrong, these raw words are what you fall back to:
+<code>sym &lt;address&gt;</code> names them, and the pattern of return
+addresses still outlines the call chain.</p>
+<h2 id="source-lines">Source lines</h2>
+<p><code>bt -l</code> inserts the source location for each frame:</p>
+<pre><code>crash&gt; bt -l
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+    /home/you/git/private/ai/linux/arch/x86/kernel/machine_kexec_64.c: 454
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+    /home/you/git/private/ai/linux/kernel/crash_core.c: 145
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+    /home/you/git/private/ai/linux/arch/x86/kernel/dumpstack.c: 378
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+    /home/you/git/private/ai/linux/arch/x86/mm/fault.c: 724</code></pre>
+<p>Module frames get lines only when the module&#39;s debug info is loaded
+(<code>mod -S</code>); without it you get the symbol and the offset,
+which is still enough to disassemble.</p>
+<h2 id="process-context-not-interrupt-context">Process context, not
+interrupt context</h2>
+<p>The shape of the stack answers the question before you reason about
+it:</p>
+<ul>
+<li>the bottom is <code>entry_SYSCALL_64_after_hwframe</code> with
+<code>CS: 0033</code>, so the task entered from userspace;</li>
+<li>the faulting frame is a normal function, not <code>irqentry_*</code>
+or an exception stack;</li>
+<li>the panicking task is <code>bash</code>, and <code>current</code> on
+that CPU is that same task.</li>
+</ul>
+<p>An interrupt-context fault looks different: the stack starts with the
+entry code for the interrupt, there may be no <code>pt_regs</code> from
+userspace at all, and <code>current</code> names whichever task was
+unlucky enough to be running. Confusing the two leads to blaming the
+wrong task.</p>
+<p>Confirm the task itself rather than assuming it:</p>
+<pre><code>crash&gt; set -p
+crash&gt; task
+    PID: 581
+COMMAND: &quot;bash&quot;
+   TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
+    CPU/NUMA:    1/0
+  STATE: TASK_RUNNING (PANIC)</code></pre>
+<p><code>STATE: TASK_RUNNING (PANIC)</code> is <code>crash</code>
+agreeing with the stack: this is the task the kernel selected as the
+panic task, and it was running on the CPU that faulted.</p>
+<h2 id="symptom-and-cause">Symptom and cause</h2>
+<p>Sort the frames into two piles before writing anything down.</p>
+<p><strong>How it died:</strong> <code>asm_exc_page_fault</code>,
+<code>page_fault_oops</code>, <code>oops_end</code>,
+<code>crash_kexec</code>, <code>machine_kexec</code>. These appear on
+every fatal fault and tell you nothing specific.</p>
+<p><strong>Why it died:</strong> <code>full_proxy_write</code> called
+into the module, and the module executed a store to address zero. The
+<code>write()</code> path explains how the module was reached; the
+exception <code>RIP</code> and <code>CR2</code> explain what went wrong
+there.</p>
+<p>A useful test: if you replaced the module frame with a different bug,
+would the &quot;cause&quot; pile change? If it would not, you are still reading
+the death procedure.</p>
+<table>
+<thead>
+<tr>
+<th>frame</th>
+<th>pile</th>
+<th>what it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>asm_exc_page_fault</code></td>
+<td>how it died</td>
+<td>a page fault reached the entry code</td>
+</tr>
+<tr>
+<td><code>page_fault_oops</code></td>
+<td>how it died</td>
+<td>the fault was in kernel mode and fatal</td>
+</tr>
+<tr>
+<td><code>oops_end</code></td>
+<td>how it died</td>
+<td>the kernel decided to stop</td>
+</tr>
+<tr>
+<td><code>crash_kexec</code>, <code>machine_kexec</code></td>
+<td>how it died</td>
+<td>the crash kernel took over</td>
+</tr>
+<tr>
+<td><code>full_proxy_write</code></td>
+<td>why it died</td>
+<td>debugfs forwarded the write to the module</td>
+</tr>
+<tr>
+<td><code>crashlab_trigger_write.cold+63</code></td>
+<td>why it died</td>
+<td>the module stored to address 0</td>
+</tr>
+</tbody>
+</table>
+<p>If the top frame had been <code>panic</code> called from a lock
+validator, or <code>BUG()</code> in a list function, the split would
+look different: the same &quot;how it died&quot; pile, a different reason, and the
+reason is what the rest of this series keeps chasing.</p>
+<h2 id="traps">Traps</h2>
+<ul>
+<li>The top frame is where it died, not necessarily why. Read past
+<code>oops_end</code> and <code>crash_kexec</code>.</li>
+<li><code>bt -p</code> needs panic notes. A QEMU monitor dump has none;
+say so and use <code>bt -a</code>.</li>
+<li>A <code>?</code> in a trace marks an unreliable frame (the unwinder
+guessed). Do not build a conclusion on one.</li>
+<li>Inlining and optimisation move code:
+<code>crashlab_trigger_write.cold</code> is the same function, not a
+different one.</li>
+<li><code>CR2</code> is the address that was touched; <code>RIP</code>
+is the instruction that touched it. Quoting one as the other is a
+classic mistake.</li>
+<li>An interrupt-context fault has a different stack shape;
+<code>current</code> is not necessarily the victim.</li>
+<li>The panic string can name a secondary failure — a lock warning that
+panicked, or a BUG() on a corrupted list — rather than the first
+error.</li>
+</ul>
+<h2 id="exercises">Exercises</h2>
+<ol type="1">
+<li>Which CPU panicked, and which task was running on it? State the
+evidence, not just the answer.</li>
+<li>What is the faulting address, and which instruction dereferenced it?
+Show the command that proves both.</li>
+<li>Was the fault in process or interrupt context? Which frames prove
+it?</li>
+</ol>
+<p>Answers are in <a href="answers.html"><code>answers.md</code></a>.</p>
+<h2 id="cheat-sheet">Cheat sheet</h2>
+<table>
+<thead>
+<tr>
+<th>question</th>
+<th>command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>panic task only</td>
+<td><code>bt -p</code></td>
+</tr>
+<tr>
+<td>every CPU</td>
+<td><code>bt -a</code></td>
+</tr>
+<tr>
+<td>one CPU</td>
+<td><code>bt -c N</code></td>
+</tr>
+<tr>
+<td>stack plus raw words</td>
+<td><code>bt -f</code></td>
+</tr>
+<tr>
+<td>with source lines</td>
+<td><code>bt -l</code></td>
+</tr>
+<tr>
+<td>exception frames</td>
+<td><code>bt -e</code></td>
+</tr>
+<tr>
+<td>the panic text</td>
+<td><code>log -T</code> (or <code>log</code>)</td>
+</tr>
+<tr>
+<td>full oops header</td>
+<td><code>log</code> around <code>BUG:</code> / <code>RIP:</code></td>
+</tr>
+<tr>
+<td>instruction at an address</td>
+<td><code>dis &lt;address&gt; [count]</code> (a bare address prints
+one)</td>
+</tr>
+<tr>
+<td>read the saved frame</td>
+<td><code>p *(struct pt_regs *)&lt;addr&gt;</code></td>
+</tr>
+<tr>
+<td>select the panic task</td>
+<td><code>set -p</code></td>
+</tr>
+<tr>
+<td>what task is that</td>
+<td><code>task</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Versions.</strong> <code>crash 9.0.3++</code> (gdb 16.2);
+kernel <code>7.3.0+</code> (x86_64, DWARF5, <code>UNWINDER_ORC=y</code>,
+<code>KALLSYMS_ALL=n</code>, no KASLR); dump <code>vmcore</code> from
+<code>makedumpfile -l -d 31</code>; panic produced by a NULL store with
+<code>panic_on_oops=1</code>. Addresses and PIDs come from one run.</p>
+<p>Previous: <a href="../04-symbols-types-addresses/index.html">Symbols,
+types, addresses</a> · Index: <a href="../../index.html">all
+posts</a>.</p>
+</body>
+</html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>panic 栈：读懂崩溃现场</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="panic-栈读懂崩溃现场">panic 栈：读懂崩溃现场</h1>
+<p><strong>panic
+栈最上面那几帧讲的是内核怎么死的，不是为什么死的。原因在中间的异常帧，来路在它下面。</strong></p>
+<p>打开 <code>null</code> 那份 dump，直接跑 <code>bt</code>：</p>
+<pre><code>crash&gt; bt
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+ #2 [ffffc90000e6bc60] crash_kexec at ffffffff81191ffb
+ #3 [ffffc90000e6bc70] oops_end at ffffffff810c4973
+ #4 [ffffc90000e6bc90] page_fault_oops at ffffffff810ecdc7
+ #5 [ffffc90000e6bd10] exc_page_fault at ffffffff8166d18c
+ #6 [ffffc90000e6bd60] asm_exc_page_fault at ffffffff810011b6
+    [exception RIP: crashlab_trigger_write.cold+63]
+    RIP: ffffffffa00000a2  RSP: ffffc90000e6be18  RFLAGS: 00010286
+    RAX: 0000000000000005  RBX: 0000000000000005  RCX: ffffffff81bfbff8
+    RDX: ffffc9000003f1c8  RSI: 0000000000000001  RDI: ffffc9000003d2c0
+    RBP: ffff888002ec6180   R8: 3fffffffffffbfff   R9: ffffffff81b87288
+    R10: bfffffffffffc000  R11: 3fffffffffffc000  R12: 000055698282ffa0
+    R13: 0000000000000005  R14: ffffc90000e6bf00  R15: ffff88800331d300
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+ #7 [ffffc90000e6be30] full_proxy_write at ffffffff8136ec89
+ #8 [ffffc90000e6be68] vfs_write at ffffffff81250f1d
+ #9 [ffffc90000e6bee8] ksys_write at ffffffff812513e6
+#10 [ffffc90000e6bf18] do_syscall_64 at ffffffff816690c6
+#11 [ffffc90000e6bf40] entry_SYSCALL_64_after_hwframe at ffffffff810000b0
+    RIP: 00007f2e8955022e  RSP: 00007ffe3f258bf0  RFLAGS: 00000202
+    ORIG_RAX: 0000000000000001  CS: 0033  SS: 002b</code></pre>
+<p>0 到 6 帧都不是故障本身，而是内核的死法：缺页被报告，oops
+处理程序判定这次必须停机，<code>kexec</code> 把机器交给 crash
+内核。任何一次 panic 都会有类似的一串，NULL
+解引用、<code>BUG()</code>、主动 <code>panic()</code> 长得差不多。</p>
+<p>原因在异常帧里：内核当时正在执行
+<code>crashlab_trigger_write.cold+63</code>，动了一块不该动的内存。7 到
+11 帧则是来路——一次 <code>write(2)</code> 经过通用写路径进了模块。</p>
+<h2 id="先从-log-看起">先从 log 看起</h2>
+<p>banner 只给一行摘要，全文在 <code>log</code> 里，而且以它为准：</p>
+<pre><code>crash&gt; log -T | grep -E &#39;BUG:|#PF|Oops:|RIP: 0010|CR2|CPU:&#39; | head
+[...] BUG: kernel NULL pointer dereference, address: 0000000000000000
+[...] #PF: supervisor write access in kernel mode
+[...] #PF: error_code(0x0002) - not-present page
+[...] Oops: Oops: 0002 [#1] SMP
+[...] CPU: 1 UID: 0 PID: 581 Comm: bash Kdump: loaded Tainted: G           O         7.3.0+ #16 PREEMPT(full)
+[...] RIP: 0010:crashlab_trigger_write.cold+0x3f/0x5d [crashlab]
+[...] CR2: 0000000000000000 CR3: 000000007dae6006 CR4: 0000000000172eb0</code></pre>
+<p>四条事实已经够描述这次崩溃：这是一次写、发生在进程上下文（<code>Comm: bash</code>，不是中断）、在
+CPU 1 上、出错地址是零。<code>Kdump: loaded</code> 说明 crash
+内核已经武装好，否则根本不会有这份 dump。</p>
+<p><code>CR2</code> 是出错的地址，<code>RIP</code>
+是执行那次访问的指令。两个别混：前者说指针指到了哪儿，后者说是哪条指令动的。</p>
+<h2 id="找到-panic-任务">找到 panic 任务</h2>
+<p><code>bt -p</code> 直接要 panic 任务，是最省事的入口：</p>
+<pre><code>crash&gt; bt -p
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
+<p>它不奏效的时候——比如没有 panic notes 的 QEMU monitor dump——就退到
+<code>bt -a</code>。哪条栈上有 oops 的痕迹，哪个 CPU 就是肇事者：</p>
+<pre><code>crash&gt; bt -a
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+ [...]
+PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: &quot;swapper/0&quot;
+ #0 [fffffe000000dea8] crash_nmi_callback at ffffffff810dd0ef
+ #1 [fffffe000000deb0] default_do_nmi at ffffffff8166bff9
+ [...]</code></pre>
+<p>另外三个 CPU 停在 <code>pv_native_safe_halt</code>
+里，它们的&quot;栈&quot;其实是 NMI 回溯——crash 路径用 NMI 把它们按住了。一个 CPU
+有 oops 路径、其余在 idle，这正是进程上下文单线程故障该有的样子。</p>
+<h2 id="栈要顺着读也要倒着读">栈要顺着读，也要倒着读</h2>
+<p>从上往下，数字告诉你死法；从下往上，帧讲述来路。</p>
+<ul>
+<li><strong>#11
+<code>entry_SYSCALL_64_after_hwframe</code></strong>：系统调用入口，再往下就是用户态（<code>CS: 0033</code>）。</li>
+<li><strong>#10 <code>do_syscall_64</code> → #9 <code>ksys_write</code>
+→ #8 <code>vfs_write</code></strong>：通用写路径，任务确实调了
+<code>write()</code>。</li>
+<li><strong>#7 <code>full_proxy_write</code></strong>：debugfs
+的代理层，把写转发给文件自己的 <code>write</code>。</li>
+<li><strong>#6 <code>asm_exc_page_fault</code> → #4
+<code>page_fault_oops</code> → #3
+<code>oops_end</code></strong>：缺页被接手，并判定为致命。</li>
+<li><strong>#2 <code>crash_kexec</code> → #1 <code>__crash_kexec</code>
+→ #0 <code>machine_kexec</code></strong>：内核退场。</li>
+</ul>
+<p>异常帧夹在 #6 和 #7 之间，它的 <code>RIP</code> 就是失败的指令：</p>
+<pre><code>crash&gt; dis ffffffffa00000a2
+0xffffffffa00000a2 &lt;crashlab_trigger_write.cold+63&gt;:    movl   $0xdeadbeef,0x0</code></pre>
+<p>整次崩溃就在这一行里：把 <code>0xdeadbeef</code> 写到绝对地址
+0。<code>$0x0</code> 是 32 位绝对寻址形式，所以出错地址是
+<code>CR2 = 0</code>，不是什么&quot;恰好为空&quot;的变量。</p>
+<p>注意符号后缀：<code>crashlab_trigger_write.cold</code>。GCC
+会把函数拆成热路径和一段外置的冷路径，NULL
+这次落在冷段里，冷段从函数起点后 0xbd 字节开始。<code>bt</code> 打出
+<code>.cold</code> 很正常，不是符号坏了。机制在第 4 篇的
+<code>dis</code> 里讲过。</p>
+<h2 id="寄存器里的五个字节">寄存器里的五个字节</h2>
+<p>异常帧里的寄存器不是摆设。<code>RAX</code> 和 <code>RBX</code> 都是
+<code>5</code>，正好是这次写入的长度：<code>echo null</code> 送出的是
+<code>&quot;null\n&quot;</code>，五个字节。写路径把这五个字节拷进模块 16
+字节的缓冲区，字符串比较相等，然后就是那一写。</p>
+<pre><code>crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ax
+$3 = 0x5</code></pre>
+<p>寄存器里的值能对上一个明显的用户输入，是把内核帧和&quot;有人敲了什么&quot;对起来的最便宜办法。它也顺便提醒：模块完全信任输入，五个字节就够了。</p>
+<h2 id="栈本身也是数据">栈本身也是数据</h2>
+<p><code>bt -f</code>
+会把每帧旁边的原始字一起打出来，其中一个就是保存的返回地址：</p>
+<pre><code>crash&gt; bt -f
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+    ffffc90000e6bba0: ffffc90000e6bd68 ffffffff81191acc
+ [...]
+    ffffc90000e6bc30: ffffffffffffffff ffffffffa00000a2</code></pre>
+<p>栈上的 <code>ffffffffa00000a2</code> 和异常 <code>RIP</code>
+是同一个值；<code>ffffffff81191acc</code> 是
+<code>__crash_kexec</code>，返回给调用者的地址。符号缺失或者不可靠时，这些原始字就是最后的依据：<code>sym &lt;地址&gt;</code>
+能还原名字，一串返回地址的排布仍然勾出调用链。</p>
+<h2 id="源码行">源码行</h2>
+<p><code>bt -l</code> 会给每帧插上源码位置：</p>
+<pre><code>crash&gt; bt -l
+ #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
+    /home/you/git/private/ai/linux/arch/x86/kernel/machine_kexec_64.c: 454
+ #1 [ffffc90000e6bba8] __crash_kexec at ffffffff81191acc
+    /home/you/git/private/ai/linux/kernel/crash_core.c: 145</code></pre>
+<p>模块帧要有行号，得先把模块调试信息加载进来（<code>mod -S</code>）；没有的话拿到符号加偏移，也足够反汇编了。</p>
+<h2 id="日志里的--帧">日志里的 <code>?</code> 帧</h2>
+<p>内核自己那份 Call Trace 和 <code>crash bt</code> 不是同一个列表。这次
+oops 里有这样的行：</p>
+<pre><code> ? filp_flush+0x4b/0x80
+ ? filp_close+0x20/0x30
+ ? do_dup2+0xa9/0x140
+ ? ksys_dup3+0x62/0xe0</code></pre>
+<p>前面的 <code>?</code>
+表示展开器不确定这一帧。它们其实是更早调用留在栈上的返回地址——shell
+刚做过文件描述符操作——不在这条调用链上。当噪声处理就好：确认过的链路很短，入口、系统调用、写、代理、模块。</p>
+<h2 id="异常帧可以直接当结构体读">异常帧可以直接当结构体读</h2>
+<p><code>bt -e</code> 把展开器能找到的异常帧都打出来：</p>
+<pre><code>crash&gt; bt -e
+  KERNEL-MODE EXCEPTION FRAME AT: ffffc90000e6bbb8
+    [exception RIP: crashlab_trigger_write.cold+63]
+    RIP: ffffffffa00000a2  RSP: ffffc90000e6be18  RFLAGS: 00010286
+    RAX: 0000000000000005  RBX: 0000000000000005  [...]
+    ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+
+  KERNEL-MODE EXCEPTION FRAME AT: ffffc90000e6bd68
+    [exception RIP: crashlab_trigger_write.cold+63]
+    [...]
+
+  USER-MODE EXCEPTION FRAME AT: ffffc90000e6bf48
+    [...]</code></pre>
+<p>两个内核态帧、<code>RIP</code> 相同，这里是正常的：oops
+路径在栈上不止一处留下了同一份寄存器，展开器把每一处都报了出来。最下面的用户态帧是系统调用的返回帧，不是第二次故障。</p>
+<p>这个帧就是内存里的
+<code>struct pt_regs</code>，可以当普通结构体读：</p>
+<pre><code>crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ip
+$1 = 0xffffffffa00000a2
+crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;sp
+$2 = 0xffffc90000e6be18</code></pre>
+<p><code>ip</code> 和出错指令一致，<code>sp</code> 和帧里的
+<code>RSP</code>
+一致。这样就能确认展开器指的是你以为的那一帧，而不是某份过期的副本。</p>
+<h2 id="进程上下文还是中断上下文">进程上下文，还是中断上下文</h2>
+<p>栈的形状先于推理给出答案：</p>
+<ul>
+<li>最下面是
+<code>entry_SYSCALL_64_after_hwframe</code>，<code>CS: 0033</code>，任务从用户态进来；</li>
+<li>出故障的帧是普通函数，不是
+<code>irqentry_*</code>，也不是异常栈；</li>
+<li>panic 任务是 <code>bash</code>，那个 CPU 上的 <code>current</code>
+也是它。</li>
+</ul>
+<p>中断上下文出错长得不一样：栈从入口代码开始，可能根本没有来自用户态的
+<code>pt_regs</code>，<code>current</code>
+只是&quot;当时恰好在跑的那个任务&quot;。两者一混，就会怪错人。</p>
+<p>任务本身要确认，不能想当然：</p>
+<pre><code>crash&gt; set -p
+crash&gt; task
+    PID: 581
+COMMAND: &quot;bash&quot;
+   TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
+    CPU/NUMA:    1/0
+  STATE: TASK_RUNNING (PANIC)</code></pre>
+<p><code>STATE: TASK_RUNNING (PANIC)</code> 是 <code>crash</code>
+在和栈对口径：这是内核选中的 panic 任务，它当时正跑在出故障的 CPU
+上。</p>
+<h2 id="症状和原因">症状和原因</h2>
+<p>动笔之前，把帧分成两堆。</p>
+<table>
+<thead>
+<tr>
+<th>帧</th>
+<th>归类</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>asm_exc_page_fault</code></td>
+<td>怎么死的</td>
+<td>缺页进了入口代码</td>
+</tr>
+<tr>
+<td><code>page_fault_oops</code></td>
+<td>怎么死的</td>
+<td>内核态缺页且致命</td>
+</tr>
+<tr>
+<td><code>oops_end</code></td>
+<td>怎么死的</td>
+<td>内核决定停机</td>
+</tr>
+<tr>
+<td><code>crash_kexec</code>、<code>machine_kexec</code></td>
+<td>怎么死的</td>
+<td>crash 内核接手</td>
+</tr>
+<tr>
+<td><code>full_proxy_write</code></td>
+<td>为什么死的</td>
+<td>debugfs 把写转发给了模块</td>
+</tr>
+<tr>
+<td><code>crashlab_trigger_write.cold+63</code></td>
+<td>为什么死的</td>
+<td>模块往地址 0 写了数据</td>
+</tr>
+</tbody>
+</table>
+<p>一个简单的检验：把模块那一帧换个别的
+bug，如果&quot;原因&quot;这一堆不变，那你还在读死法。</p>
+<h2 id="易错点">易错点</h2>
+<ul>
+<li>最上面那帧是死的地方，不一定死因。要越过 <code>oops_end</code> 和
+<code>crash_kexec</code> 往下看。</li>
+<li><code>bt -p</code> 依赖 panic notes。QEMU monitor 的 dump
+没有，说明情况并改用 <code>bt -a</code>。</li>
+<li>栈里带 <code>?</code> 的帧表示展开不确定，别拿它下结论。</li>
+<li>内联和优化会搬代码：<code>crashlab_trigger_write.cold</code>
+还是同一个函数，不是另一个。</li>
+<li><code>CR2</code> 是被访问的地址，<code>RIP</code>
+是执行访问的指令；把两者当同一件事是常见错误。</li>
+<li>中断上下文出错时栈形状不同，<code>current</code> 未必是受害者。</li>
+<li>panic 字符串可能描述的是次生故障（锁检查报错后 panic、链表损坏后
+<code>BUG()</code>），不是第一个错误。</li>
+</ul>
+<h2 id="练习">练习</h2>
+<ol type="1">
+<li>哪个 CPU 崩了，当时在跑哪个任务？要给出证据，而不只是结论。</li>
+<li>出错地址是多少，哪条指令解引用了它？用命令把两件事都证明出来。</li>
+<li>这次故障在进程上下文还是中断上下文？哪几帧能证明？</li>
+</ol>
+<p>答案见 <a href="answers.html"><code>answers.md</code></a>。</p>
+<h2 id="速查">速查</h2>
+<table>
+<thead>
+<tr>
+<th>想做的事</th>
+<th>命令</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>只看 panic 任务</td>
+<td><code>bt -p</code></td>
+</tr>
+<tr>
+<td>所有 CPU</td>
+<td><code>bt -a</code></td>
+</tr>
+<tr>
+<td>某个 CPU</td>
+<td><code>bt -c N</code></td>
+</tr>
+<tr>
+<td>栈加原始字</td>
+<td><code>bt -f</code></td>
+</tr>
+<tr>
+<td>带源码行</td>
+<td><code>bt -l</code></td>
+</tr>
+<tr>
+<td>异常帧</td>
+<td><code>bt -e</code></td>
+</tr>
+<tr>
+<td>panic 全文</td>
+<td><code>log -T</code>（或 <code>log</code>）</td>
+</tr>
+<tr>
+<td>oops 头</td>
+<td><code>log</code> 里 <code>BUG:</code> / <code>RIP:</code> 附近</td>
+</tr>
+<tr>
+<td>地址上的指令</td>
+<td><code>dis &lt;address&gt; [count]</code>（只给地址只反汇编一条）</td>
+</tr>
+<tr>
+<td>读保存的寄存器</td>
+<td><code>p *(struct pt_regs *)&lt;addr&gt;</code></td>
+</tr>
+<tr>
+<td>选中 panic 任务</td>
+<td><code>set -p</code></td>
+</tr>
+<tr>
+<td>这是哪个任务</td>
+<td><code>task</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>版本。</strong> <code>crash 9.0.3++</code>（gdb 16.2）；内核
+<code>7.3.0+</code>（x86_64，DWARF5，
+<code>UNWINDER_ORC=y</code>，<code>KALLSYMS_ALL=n</code>，无
+KASLR）；dump <code>vmcore</code>，
+<code>makedumpfile -l -d 31</code>；panic 由一次 NULL
+写触发，<code>panic_on_oops=1</code>。地址和 PID 来自某一次运行。</p>
+<p>上一篇：<a href="../04-symbols-types-addresses/index.html">符号、类型与地址</a> ·
+目录：<a href="../../index.html">全部文章</a></p>
+</body>
+</html>

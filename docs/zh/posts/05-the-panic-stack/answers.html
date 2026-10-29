@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>panic 栈：读懂崩溃现场 — 答案</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="答案panic-栈">答案：panic 栈</h1>
+<h2 id="1-哪个-cpu哪个任务">1. 哪个 CPU，哪个任务</h2>
+<p><strong>CPU 1，任务 <code>bash</code>（PID 581）。</strong></p>
+<p>最省事的命令是 <code>bt -p</code>，直接向 dump 要 panic 任务：</p>
+<pre><code>crash&gt; bt -p
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
+<p>证据有三处，而且互相吻合：</p>
+<ul>
+<li>帧头写着 <code>CPU/NUMA: 1/0</code> 与
+<code>COMMAND: &quot;bash&quot;</code>；</li>
+<li><code>set -p</code> 之后 <code>task</code> 打出
+<code>STATE: TASK_RUNNING (PANIC)</code>；</li>
+<li><code>log</code> 里的 oops 行写着
+<code>CPU: 1 ... PID: 581 Comm: bash</code>。</li>
+</ul>
+<p>如果 <code>bt -p</code> 不可用，<code>bt -a</code>
+换条路也能给出同样的答案：只有栈里带
+<code>page_fault_oops</code>/<code>oops_end</code> 的那个 CPU
+接了这次缺页，CPU 1 上就是 PID 581。另外三个 CPU 是 idle 循环里的
+<code>swapper/N</code>，栈是 crash 路径用 NMI 打出来的回溯。</p>
+<h2 id="2-出错地址与指令">2. 出错地址与指令</h2>
+<p><strong>出错地址是 0（<code>CR2</code>）。指令是
+<code>crashlab_trigger_write.cold+63</code> 处的
+<code>movl $0xdeadbeef,0x0</code>。</strong></p>
+<p>两半各由一条命令证明：</p>
+<pre><code>crash&gt; log -T | grep CR2
+[...] CR2: 0000000000000000 [...]
+
+crash&gt; dis ffffffffa00000a2
+0xffffffffa00000a2 &lt;crashlab_trigger_write.cold+63&gt;:    movl   $0xdeadbeef,0x0</code></pre>
+<p><code>RIP</code> 来自异常帧（<code>bt -e</code> 里是
+<code>RIP: ffffffffa00000a2</code>），指令内容是把
+<code>0xdeadbeef</code> 写到绝对地址 0。<code>log</code> 里的
+<code>#PF</code> 行还补了一句：这是一次<strong>写</strong>，目标是
+not-present 页。</p>
+<p>只引用 <code>CR2</code> 或只引用
+<code>RIP</code>，描述都是不完整的：<code>CR2</code>
+是指针当年指到的地址，<code>RIP</code>
+是使用它的那条指令。这次两者指向同一个 bug，但它们是两件事。</p>
+<h2 id="3-进程上下文还是中断上下文">3. 进程上下文还是中断上下文</h2>
+<p><strong>进程上下文。</strong></p>
+<p>定案靠这几帧：</p>
+<ul>
+<li>栈底的 <code>entry_SYSCALL_64_after_hwframe</code> 和
+<code>CS: 0033</code>：任务是通过系统调用从用户态进来的，不是被中断打断的。</li>
+<li><code>do_syscall_64</code> → <code>ksys_write</code> →
+<code>vfs_write</code> → <code>full_proxy_write</code>：一次
+<code>write(2)</code>
+的普通调用链，全程都在发起任务自己的上下文里。</li>
+<li>panic 任务是 <code>bash</code>，而
+<code>bt -p</code>、<code>task</code> 和 oops 行里的
+<code>Comm: bash</code> 三处说的是同一个任务。</li>
+</ul>
+<p>中断上下文出错长得不一样：栈会从
+<code>irqentry_*</code>、<code>asm_common_interrupt</code>
+或者异常栈开始，<code>current</code>
+只是&quot;当时恰好在跑的那个任务&quot;，不一定是代码出错的那个。故障下方存在用户态系统调用帧，是最有力的单个信号。</p>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>The panic stack — answers</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">
+:root {
+--page: #f7f3ea;
+--ink: #22252a;
+--muted: #5b5f66;
+--rule: #e2d8c3;
+--accent: #8a6d3b;
+--code: #f1eadb;
+}
+html {
+background: var(--page);
+}
+body {
+box-sizing: border-box;
+max-width: 62rem;
+margin: 0 auto;
+padding: 3.5rem 1.5rem 5rem;
+color: var(--ink);
+background: transparent;
+font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+font-size: 18px;
+line-height: 1.7;
+hyphens: none;
+-webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 {
+font-weight: 750;
+line-height: 1.25;
+letter-spacing: -0.01em;
+}
+h1 {
+font-size: 2.5rem;
+margin: 0 0 1.2rem;
+}
+h2 {
+font-size: 1.55rem;
+margin: 3rem 0 1rem;
+padding-top: 1.4rem;
+border-top: 1px solid var(--rule);
+}
+h3 {
+font-size: 1.2rem;
+margin: 2rem 0 0.6rem;
+}
+p {
+margin: 1rem 0;
+}
+
+h1 + p {
+font-size: 1.15rem;
+line-height: 1.6;
+color: var(--muted);
+margin-bottom: 2rem;
+}
+h1 + p strong {
+font-weight: 600;
+color: var(--muted);
+}
+a {
+color: var(--accent);
+text-decoration-thickness: 1px;
+text-underline-offset: 2px;
+}
+img {
+display: block;
+width: 100%;
+height: auto;
+margin: 2.2rem 0;
+border-radius: 10px;
+}
+pre {
+margin: 1.4rem 0;
+padding: 1rem 1.2rem;
+overflow-x: auto;
+background: var(--code);
+border: 1px solid var(--rule);
+border-radius: 8px;
+font-size: 0.82rem;
+line-height: 1.55;
+}
+code {
+font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+:not(pre) > code {
+background: var(--code);
+padding: 0.12em 0.35em;
+border-radius: 4px;
+font-size: 0.88em;
+}
+table {
+width: 100%;
+margin: 1.6rem 0;
+border-collapse: collapse;
+font-size: 0.95rem;
+}
+th, td {
+padding: 0.55rem 0.7rem;
+border: 1px solid var(--rule);
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--code);
+font-weight: 700;
+}
+blockquote {
+margin: 1.8rem 0;
+padding: 0.2rem 0 0.2rem 1.1rem;
+border-left: 4px solid var(--accent);
+color: var(--muted);
+}
+blockquote p {
+margin: 0.5rem 0;
+}
+hr {
+margin: 3rem 0;
+border: 0;
+border-top: 1px solid var(--rule);
+}
+ul, ol {
+margin: 1rem 0;
+padding-left: 1.4rem;
+}
+li {
+margin: 0.35rem 0;
+}
+strong {
+font-weight: 700;
+}
+@media (max-width: 700px) {
+body {
+padding: 2rem 1rem 3rem;
+font-size: 16px;
+}
+h1 {
+font-size: 2rem;
+}
+h2 {
+font-size: 1.35rem;
+}
+img {
+margin: 1.5rem 0;
+}
+}
+</style>
+</head>
+<body>
+<h1 id="answers--the-panic-stack">Answers — The panic stack</h1>
+<h2 id="1-which-cpu-which-task">1. Which CPU, which task</h2>
+<p><strong>CPU 1, task <code>bash</code> (PID 581).</strong></p>
+<p>The cheap command is <code>bt -p</code>, which asks the dump for the
+panic task:</p>
+<pre><code>crash&gt; bt -p
+PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
+<p>The evidence is threefold, and they agree:</p>
+<ul>
+<li>the frame header says <code>CPU/NUMA: 1/0</code> and
+<code>COMMAND: &quot;bash&quot;</code>;</li>
+<li><code>set -p</code> followed by <code>task</code> prints
+<code>STATE: TASK_RUNNING (PANIC)</code>;</li>
+<li>the oops line in <code>log</code> says
+<code>CPU: 1 ... PID: 581 Comm: bash</code>.</li>
+</ul>
+<p>If <code>bt -p</code> had not worked, <code>bt -a</code> would have
+given the same answer a different way: only the CPU whose stack contains
+<code>page_fault_oops</code>/<code>oops_end</code> took the fault, and
+on CPU 1 that is PID 581. The other three CPUs are
+<code>swapper/N</code> in the idle loop, with NMI backtraces from the
+crash path.</p>
+<h2 id="2-faulting-address-and-instruction">2. Faulting address and
+instruction</h2>
+<p><strong>The faulting address is 0 (<code>CR2</code>). The instruction
+is <code>movl $0xdeadbeef,0x0</code> at
+<code>crashlab_trigger_write.cold+63</code>.</strong></p>
+<p>Two different commands prove the two halves:</p>
+<pre><code>crash&gt; log -T | grep CR2
+[...] CR2: 0000000000000000 [...]
+
+crash&gt; dis ffffffffa00000a2
+0xffffffffa00000a2 &lt;crashlab_trigger_write.cold+63&gt;:    movl   $0xdeadbeef,0x0</code></pre>
+<p>The <code>RIP</code> comes from the exception frame
+(<code>bt -e</code> shows <code>RIP: ffffffffa00000a2</code>), and the
+value is <code>0xdeadbeef</code> being stored to absolute address zero.
+The <code>#PF</code> line in the log adds that it was a
+<strong>write</strong> to a not-present page.</p>
+<p>If you quote only one of <code>CR2</code> or <code>RIP</code>, the
+description is wrong: <code>CR2</code> is the address the pointer held,
+<code>RIP</code> is the code that used it. Here both point at the same
+bug, but they are different facts.</p>
+<h2 id="3-process-or-interrupt-context">3. Process or interrupt
+context</h2>
+<p><strong>Process context.</strong></p>
+<p>The frames that settle it:</p>
+<ul>
+<li><code>entry_SYSCALL_64_after_hwframe</code> at the bottom with
+<code>CS: 0033</code> — the task entered the kernel through a syscall
+from userspace, not through an interrupt.</li>
+<li><code>do_syscall_64</code> → <code>ksys_write</code> →
+<code>vfs_write</code> → <code>full_proxy_write</code> — an ordinary
+call chain for a <code>write(2)</code>, all in the context of the
+calling task.</li>
+<li>The panic task is <code>bash</code>, and the same task appears in
+<code>bt -p</code>, in <code>task</code>, and in the oops line&#39;s
+<code>Comm: bash</code>.</li>
+</ul>
+<p>An interrupt-context fault would look different: the stack would
+begin in the interrupt entry code (<code>irqentry_*</code>,
+<code>asm_common_interrupt</code>, or an exception stack), and
+<code>current</code> would name whichever task happened to be running —
+which is not necessarily the task whose code faulted. The presence of a
+userspace syscall frame below the fault is the strongest single
+signal.</p>
+</body>
+</html>
