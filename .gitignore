@@ -9,3 +9,7 @@ Module.symvers
 
 # Per-post local preview (docs/ is the published copy)
 preview.html
+
+# Generated landing-page fragments
+site/.posts.md
+site/.index.build.md

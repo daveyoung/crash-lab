@@ -36,8 +36,37 @@ render() {
 	)
 }
 
-# Landing page.
-render site/index.md "$OUT/index.html" "Crash Lab"
+# Landing page: fill the <!--POSTS--> marker from site/plan.tsv. A post is
+# "finished" when its directory exists; everything else is listed as coming.
+POSTS_MD=$ROOT/site/.posts.md
+INDEX_MD=$ROOT/site/.index.build.md
+trap 'rm -f "$POSTS_MD" "$INDEX_MD"' EXIT
+
+: > "$POSTS_MD"
+part=
+first=1
+while IFS='	' read -r p n slug title; do
+	[ "$n" = "number" ] && continue
+	[ -n "${n:-}" ] || continue
+	if [ "$p" != "$part" ]; then
+		[ $first -eq 0 ] && printf '\n' >> "$POSTS_MD"
+		printf '### %s\n\n' "$p" >> "$POSTS_MD"
+		part=$p
+		first=0
+	fi
+	if [ -f "$ROOT/posts/$n-$slug/index.md" ]; then
+		printf -- '- **%s.** [%s](posts/%s-%s/)\n' "$n" "$title" "$n" "$slug" >> "$POSTS_MD"
+	else
+		printf -- '- **%s.** *%s* — coming\n' "$n" "$title" >> "$POSTS_MD"
+	fi
+done < "$ROOT/site/plan.tsv"
+
+awk -v listfile="$POSTS_MD" '
+	/<!--POSTS-->/ { while ((getline line < listfile) > 0) print line; next }
+	{ print }
+' "$ROOT/site/index.md" > "$INDEX_MD"
+
+render "$INDEX_MD" "$OUT/index.html" "Crash Lab"
 
 # Posts, each with its answers.
 for dir in posts/*/; do

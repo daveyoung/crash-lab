@@ -1,0 +1,21 @@
+part	number	slug	title
+Part I — Groundwork	01	what-crash-is	What `crash` is, and what it needs
+Part I — Groundwork	02	the-lab	The lab: `make` → KVM → vmcore → `crash>`
+Part I — Groundwork	03	the-command-language	The command language
+Part I — Groundwork	04	symbols-types-addresses	Symbols, types, addresses
+Part II — Reading the crash	05	the-panic-stack	The panic stack
+Part II — Reading the crash	06	when-bt-lies	When `bt` lies
+Part II — Reading the crash	07	tasks-and-the-scheduler	Tasks and the scheduler
+Part II — Reading the crash	08	time-and-the-log	Time and the log
+Part III — Memory	09	the-memory-picture	The memory picture
+Part III — Memory	10	slab-forensics	Slab forensics
+Part III — Memory	11	pages-mappings-page-tables	Pages, mappings, page tables
+Part III — Memory	12	corruption-poison-search	Corruption, poison, search
+Part IV — Subsystems	13	locks-and-deadlocks	Locks and deadlocks
+Part IV — Subsystems	14	interrupts-timers-per-cpu	Interrupts, timers, per-CPU
+Part IV — Subsystems	15	files-mounts-ipc	Files, mounts, IPC
+Part IV — Subsystems	16	networking-devices-block	Networking, devices, block
+Part V — Power tools and capstone	17	modules-and-symbols	Modules and symbols
+Part V — Power tools and capstone	18	gdb-extensions-bpf	gdb mode, extensions, `bpf`
+Part V — Power tools and capstone	19	automation-and-triage	Automation and triage
+Part V — Power tools and capstone	20	capstone	Capstone

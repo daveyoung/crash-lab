@@ -45,6 +45,12 @@ Each post is `index.md` plus `answers.md`. The site is generated into `docs/`:
 ./build.sh
 ```
 
+The landing page is generated from `site/index.md` plus `site/plan.tsv`, which
+lists all twenty planned posts by part, number, slug and title. A post counts as
+finished when `posts/NN-slug/index.md` exists, and the build links it; the rest
+are rendered as "*coming*". So adding a post is: write the directory, run
+`build.sh`, and the index updates itself.
+
 That needs `pandoc` 3.0 or newer. `build.sh` renders the landing page, every
 post, its answers, and the module README into self-contained HTML, rewrites the
 answer links, and drops a `.nojekyll` marker. The per-post `render.sh` still
