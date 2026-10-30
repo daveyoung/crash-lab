@@ -415,19 +415,13 @@ path, so the faulting task is your shell and the stack is short:</p>
 <span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
 <p>Build it against the tree you just built:</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/crashlab</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> KDIR=~/crash-lab/linux</span></code></pre></div>
-<p>The first build against <code>7.3.0+</code> failed on one line:</p>
-<pre><code>crashlab.c:54:19: error: ‘no_llseek’ undeclared here (not in a function); did you mean ‘noop_llseek’?
-   54 |         .llseek = no_llseek,</code></pre>
-<p><code>no_llseek</code> was removed from the kernel; the module uses
-<code>noop_llseek</code>. That is the only change it needed. The result
-is a normal out-of-tree module:</p>
-<pre><code>$ modinfo crashlab.ko
-author:         Crash Lab
-description:    Crash Lab deliberately buggy test module
-license:        GPL
-name:           crashlab
-vermagic:       7.3.0+ SMP preempt mod_unload</code></pre>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> KDIR=~/crash-lab/linux</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> modinfo crashlab.ko</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="ex">author:</span>         Crash Lab</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="ex">description:</span>    Crash Lab deliberately buggy test module</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="ex">license:</span>        GPL</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="ex">name:</span>           crashlab</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a><span class="ex">vermagic:</span>       7.3.0+ SMP preempt mod_unload</span></code></pre></div>
 <h2 id="boot-it-and-get-a-shell">Boot it and get a shell</h2>
 <p>Boot the kernel you built, in a virtual machine or on a machine you
 are willing to lose. Note the console you get a shell on, and make sure
@@ -446,8 +440,7 @@ uses. If the kernel cannot find the reservation at panic time, it has
 nowhere to put the crash kernel and the machine just reboots.</p>
 <h2 id="arm-the-crash-kernel">Arm the crash kernel</h2>
 <p><code>crashkernel=</code> on the kernel command line reserves memory
-for a second kernel. <code>--reuse-cmdline</code> carries that
-reservation into the kernel that will take over:</p>
+for a second kernel:</p>
 <pre><code># grep -i crash /proc/iomem
   6a000000-79ffffff : Crash kernel
 
@@ -459,12 +452,7 @@ kexec rc=0
 # cat /sys/kernel/kexec_crash_size
 268435456</code></pre>
 <p><code>kexec -p</code> takes a <code>bzImage</code>, not a
-<code>vmlinux</code>, and it must be the <strong>same build</strong> as
-the kernel that is running. If those two differ, the crash kernel is a
-different kernel from the one it is dumping, and the dump loses symbols.
-Verify:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> bzImage            <span class="co"># the one the machine booted</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> /path/to/bzImage   <span class="co"># the one kexec will load</span></span></code></pre></div>
+<code>vmlinux</code>.</p>
 <p>Check <code>kexec_crash_loaded</code> every time.
 <code>kexec -p</code> returning 0 and a crash kernel actually being
 armed are two different facts, and only the second one helps you after
@@ -494,7 +482,7 @@ machine reboots and you get nothing.</p>
 capture</h2>
 <p>The crash kernel boots with an extra argument that points at the
 state the dying kernel left behind:</p>
-<pre><code>Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0 crashkernel=256M</code></pre>
+<pre><code>Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0</code></pre>
 <p>and it recognises what it is looking at:</p>
 <pre><code>vmcore: dump is from kernel 7.3.0+</code></pre>
 <p>Log in, then write the dump out of <code>/proc/vmcore</code>:</p>
@@ -559,7 +547,7 @@ the same crash has to be re-captured at a lower level. Decide the level
 from the question, not from habit.</p>
 <h2 id="open-it">Open it</h2>
 <p>With the matching <code>vmlinux</code>:</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore</span></code></pre></div>
 <p>The banner is Post 1&#39;s. The smoke test is the point of this post:</p>
 <pre><code>crash&gt; bt
 PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
@@ -586,13 +574,6 @@ PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&qu
       BUFFERS        0            0    0% of TOTAL MEM
        CACHED    16567      64.7 MB    3% of TOTAL MEM
          SLAB     3365      13.1 MB    0% of TOTAL MEM</code></pre>
-<p>Those numbers are computed from whatever page structures survived
-<code>-d 31</code>, so they are not the machine&#39;s real memory usage:
-this dump reports 92% free on a booted systemd guest, and
-<code>crash</code> 9.0.2 reported 97% for the same file. On a partial
-dump, read <code>kmem -i</code> as a shape, not a ledger.
-<code>kmem -s</code> lists slab caches and their object counts, which is
-a different question from total memory use.</p>
 <p>The stack is complete under ORC with no frame pointers, which matters
 for Post 6, and the module frame is symbolized even though the module&#39;s
 data symbols are not. The <code>-s</code> flag is what makes it
@@ -636,8 +617,6 @@ produce kernels that build and boot and cannot be debugged
 properly.</li>
 <li>A rebuild after a config change is a different namelist even if the
 release string matches.</li>
-<li>The <code>bzImage</code> your machine boots and the one
-<code>kexec -p</code> loads must be the same build, byte for byte.</li>
 <li><code>kexec -p</code> before the panic, always, and check
 <code>/sys/kernel/kexec_crash_loaded</code> after.</li>
 <li>A plain NULL deref only oopses. Without <code>panic_on_oops=1</code>
@@ -687,11 +666,6 @@ check?</li>
 <td>build</td>
 <td><code>modinfo crashlab.ko</code></td>
 <td>vermagic matches the kernel</td>
-</tr>
-<tr>
-<td>host</td>
-<td><code>sha256sum</code> on both <code>bzImage</code> copies</td>
-<td>the boot and kexec images are the same</td>
 </tr>
 <tr>
 <td>guest</td>

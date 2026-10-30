@@ -382,8 +382,7 @@ uptime of three minutes fifty-eight seconds: short enough that most of
 memory was still in its initial state.</li>
 <li><strong><code>LOAD AVERAGE</code>, <code>TASKS</code>,
 <code>NODENAME</code></strong> — 0.72/0.21/0.07, 94 tasks,
-<code>localhost.localdomain</code>. A non-zero load average on a machine
-you thought was idle is worth a question.</li>
+<code>localhost.localdomain</code>.</li>
 <li><strong><code>RELEASE</code> and <code>VERSION</code></strong> —
 <code>7.3.0+</code>,
 <code>#16 SMP PREEMPT_DYNAMIC Mon Oct 26 14:48:51 CST 2026</code>. The
@@ -401,11 +400,7 @@ type, registers, and stack. Post 5 starts there.</li>
 </ul>
 <h2 id="sys-repeats-the-banner"><code>sys</code> repeats the banner</h2>
 <p><code>sys</code> prints the same block, which is convenient in a
-command file. One caveat from this lab: in a <code>-i</code> file where
-<code>sys</code> is followed by a piped <code>log</code>, the
-<code>PANIC:</code> line once showed unrelated early-boot lines;
-interactively it was correct. Treat the banner as a hint and confirm the
-oops with <code>log</code>.</p>
+command file.</p>
 <h2 id="proving-the-pair-before-you-trust-it">Proving the pair before
 you trust it</h2>
 <p><code>crash</code> has four cheap commands for this, and only two of

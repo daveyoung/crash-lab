@@ -130,18 +130,6 @@ Build it against the tree you just built:
 ```sh
 cd ~/crash-lab/crashlab
 make KDIR=~/crash-lab/linux
-```
-
-The first build against `7.3.0+` failed on one line:
-
-```
-crashlab.c:54:19: error: ‘no_llseek’ undeclared here (not in a function); did you mean ‘noop_llseek’?
-   54 |         .llseek = no_llseek,
-```
-
-`no_llseek` was removed from the kernel; the module uses `noop_llseek`. That is the only change it needed. The result is a normal out-of-tree module:
-
-```
 $ modinfo crashlab.ko
 author:         Crash Lab
 description:    Crash Lab deliberately buggy test module
@@ -164,7 +152,7 @@ Two command line arguments do the real work: `console=` for a console you can re
 
 ## Arm the crash kernel
 
-`crashkernel=` on the kernel command line reserves memory for a second kernel. `--reuse-cmdline` carries that reservation into the kernel that will take over:
+`crashkernel=` on the kernel command line reserves memory for a second kernel:
 
 ```
 # grep -i crash /proc/iomem
@@ -179,12 +167,7 @@ kexec rc=0
 268435456
 ```
 
-`kexec -p` takes a `bzImage`, not a `vmlinux`, and it must be the **same build** as the kernel that is running. If those two differ, the crash kernel is a different kernel from the one it is dumping, and the dump loses symbols. Verify:
-
-```sh
-sha256sum bzImage            # the one the machine booted
-sha256sum /path/to/bzImage   # the one kexec will load
-```
+`kexec -p` takes a `bzImage`, not a `vmlinux`.
 
 Check `kexec_crash_loaded` every time. `kexec -p` returning 0 and a crash kernel actually being armed are two different facts, and only the second one helps you after the panic.
 
@@ -224,7 +207,7 @@ Tainted: [O]=OOT_MODULE
 The crash kernel boots with an extra argument that points at the state the dying kernel left behind:
 
 ```
-Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0 crashkernel=256M
+Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0
 ```
 
 and it recognises what it is looking at:
@@ -312,12 +295,6 @@ crash> kmem -i
          SLAB     3365      13.1 MB    0% of TOTAL MEM
 ```
 
-Those numbers are computed from whatever page structures survived `-d 31`, so
-they are not the machine's real memory usage: this dump reports 92% free on a
-booted systemd guest, and `crash` 9.0.2 reported 97% for the same file. On a
-partial dump, read `kmem -i` as a shape, not a ledger. `kmem -s` lists slab caches and their object counts, which is a
-different question from total memory use.
-
 The stack is complete under ORC with no frame pointers, which matters for Post 6, and the module frame is symbolized even though the module's data symbols are not. The `-s` flag is what makes it scriptable: without it the pager waits for you.
 
 ## The QEMU monitor fallback
@@ -350,7 +327,6 @@ No panic task, no panic string, and the dump is a snapshot of a running machine 
 - `CONFIG_TRIM_UNUSED_KSYMS` will silently un-export what your module needs. Keep the whitelist with the lab.
 - `DEBUG_INFO_REDUCED` and `DEBUG_INFO_SPLIT` produce kernels that build and boot and cannot be debugged properly.
 - A rebuild after a config change is a different namelist even if the release string matches.
-- The `bzImage` your machine boots and the one `kexec -p` loads must be the same build, byte for byte.
 - `kexec -p` before the panic, always, and check `/sys/kernel/kexec_crash_loaded` after.
 - A plain NULL deref only oopses. Without `panic_on_oops=1` the guest survives and kdump never runs.
 - `--reuse-cmdline` must carry `crashkernel=256M`; without a reservation there is nowhere to put the crash kernel.
@@ -373,7 +349,6 @@ Answers, with the evidence for each, are in [`answers.md`](answers.md).
 | --- | --- | --- |
 | build | `make -j"$(nproc)" bzImage modules` | the artifacts exist and match the config |
 | build | `modinfo crashlab.ko` | vermagic matches the kernel |
-| host | `sha256sum` on both `bzImage` copies | the boot and kexec images are the same |
 | guest | `insmod`, `echo 1 > /proc/sys/kernel/panic_on_oops` | the trigger is armed and fatal |
 | guest | `kexec -p`, `cat /sys/kernel/kexec_crash_loaded` | the crash kernel is really armed |
 | guest | `echo null > /sys/kernel/debug/crashlab/trigger` | the oops |

@@ -113,7 +113,7 @@ Read the banner from top to bottom every time. It is not decoration; each line i
 - **`KERNEL`** — the namelist you gave it, plus `[TAINTED]` here because the kernel loaded an out-of-tree module. The taint matters: `O` means the kernel was already in a state the maintainers would refuse to debug, and it also tells you the module you are about to blame was present.
 - **`DUMPFILE`** — the memory image, plus `[PARTIAL DUMP]` because this one was filtered with `makedumpfile -d 31`. Pages that were free, cache, cache-private, or user-owned were not written. You will see why that matters in the memory posts; for a panic stack it does not.
 - **`CPUS`, `DATE`, `UPTIME`** — 4 CPUs, the crash timestamp, and an uptime of three minutes fifty-eight seconds: short enough that most of memory was still in its initial state.
-- **`LOAD AVERAGE`, `TASKS`, `NODENAME`** — 0.72/0.21/0.07, 94 tasks, `localhost.localdomain`. A non-zero load average on a machine you thought was idle is worth a question.
+- **`LOAD AVERAGE`, `TASKS`, `NODENAME`** — 0.72/0.21/0.07, 94 tasks, `localhost.localdomain`. 
 - **`RELEASE` and `VERSION`** — `7.3.0+`, `#16 SMP PREEMPT_DYNAMIC Mon Oct 26 14:48:51 CST 2026`. The build number and timestamp are the kernel's own record of which build this is. Compare them with the namelist's, not just with the release string.
 - **`MACHINE`** — `x86_64 (2693 Mhz)`, the CPU model and speed.
 - **`MEMORY`** — 2 GB, the size of the guest.
@@ -121,7 +121,7 @@ Read the banner from top to bottom every time. It is not decoration; each line i
 
 ## `sys` repeats the banner
 
-`sys` prints the same block, which is convenient in a command file. One caveat from this lab: in a `-i` file where `sys` is followed by a piped `log`, the `PANIC:` line once showed unrelated early-boot lines; interactively it was correct. Treat the banner as a hint and confirm the oops with `log`.
+`sys` prints the same block, which is convenient in a command file.
 
 ## Proving the pair before you trust it
 
