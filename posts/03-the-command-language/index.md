@@ -147,29 +147,6 @@ crash> ps -S > ps-states.txt        # truncates
 crash> foreach UN bt >> un.txt      # appends
 ```
 
-One warning that cost time in this lab: in the current `crash`, a **piped**
-`log` inside a `-i` command file corrupts the header. If the file is
-
-```
-sys
-log -T | tail -n 3
-exit
-```
-
-then the `PANIC:` line comes out as the log tail and the real panic string is
-printed at the end of the session:
-
-```
-       PANIC: [Mon Oct 26 18:55:16 CST 2026]  </TASK>
-[Mon Oct 26 18:55:16 CST 2026] Modules linked in: crashlab(O)
-[Mon Oct 26 18:55:16 CST 2026] CR2: 0000000000000000
-[...]
-"Oops: Oops: 0002 [#1] SMP" (check log for details)
-```
-
-The same commands on stdin are fine, and so is an unpiped `log -T`. Until that
-is fixed, put `log` before `sys` in a command file, or leave the pipe out.
-
 ## Input: files
 
 Three ways to feed commands, and they differ at the edges:
@@ -282,23 +259,13 @@ crash> ascii 6c6c756e
 
 That is the string the module compares against, four bytes in memory order.
 
-`repeat` is the one to avoid. It is documented as a live-system tool, and on a
-dump it does not terminate: `repeat -1 bt` prints one backtrace and then hangs
-until it is killed, and `repeat -1 ps -S` prints nothing at all. Use a loop in
-your shell if you need one; there is nothing live here to watch.
+`repeat` is the one to avoid. It is usually a live-system tool.
 
-## What is not scriptable
+## `.crashrc`
 
-History is a readline feature of the interactive prompt: `h` lists previous
-commands, `rr` repeats one, and `!!` re-runs the last. None of it exists in a
-command file, which is exactly why the file has to contain the whole story.
-
-The other thing to know is `.crashrc`. `crash` reads it — from the current
-directory first, then `$HOME` — and applies any `set` commands it finds there.
-That means your friendly neighbourhood `set scroll off` can change a colleague's
-run, and a stray `set radix 10` can change the numbers in a report. Command
-files and command-line options override it, so a reproducible run should set
-what it depends on explicitly.
+`crash` reads `.crashrc` from the current directory first, then `$HOME`, and
+applies any `set` commands there. A stray `set radix 10` changes the numbers in
+a report; command files and command-line options override it.
 
 ## The file is the unit of triage
 
@@ -321,11 +288,9 @@ exit
 crash -s --no_scroll -i triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore > report.txt
 ```
 
-`report.txt` is 578 lines, and every one of them is reproducible: the same
-input file and the same `vmlinux` produce the same structure, with only
-addresses varying. That is the difference between "I looked at a dump once" and
-"here is the triage I ran". Post 19 grows this file into a report; the shape
-does not change.
+`report.txt` is 578 lines. The same input file and the same `vmlinux` produce
+the same structure, only addresses vary. Post 19 grows this file into a report;
+the shape does not change.
 
 ## Traps
 
@@ -336,10 +301,8 @@ does not change.
 - `foreach` parsing is positional, and flags belong to the inner command.
 - State letters are crash-specific (`UN`, `DE`, `ID`); do not read them as `ps(1)` letters.
 - A `-i` file without `exit` exits with status 1.
-- In the current release, a piped `log` after `sys` inside `-i` corrupts the `PANIC:` line. Keep the pipe out until it is fixed.
 - `!` runs a shell command, and `!` alone escapes to a shell. Do not feed it untrusted input.
 - A `.crashrc` in the current directory or `$HOME` can silently change `set` variables; the command file is what makes the run reproducible.
-- `repeat` does not work on a dump; it hangs.
 
 ## Exercises
 

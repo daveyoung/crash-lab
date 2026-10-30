@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>命令语言 — 答案</title>
+  <title>命令语言：上下文、输出与 foreach — 答案</title>
   <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -238,49 +238,41 @@ margin: 1.5rem 0;
 可中断任务与空闲任务写进同一个文件</h2>
 <pre class="crash"><code>foreach IN bt &gt; in.txt
 foreach ID bt &gt;&gt; id.txt</code></pre>
-<p><strong>这份 dump 的命中数：</strong> 46 个可中断任务，43
-个空闲任务。动手之前 <code>ps -S</code> 就会告诉你：</p>
+<p>这份 dump 命中 46 个可中断任务、43 个空闲任务。写命令之前
+<code>ps -S</code> 就会给出数字：</p>
 <pre><code>crash&gt; ps -S
   RU: 5
   IN: 46
   ID: 43</code></pre>
-<p><strong><code>UN</code> 为什么不在其中：</strong>
-这些字母是崩溃那一刻的任务状态，而这台机器死的时候没有处于
-<code>TASK_UNINTERRUPTIBLE</code>（也就是 <code>ps(1)</code> 里的
-<code>D</code>）的任务。文件系统或驱动卡死时，<code>UN</code>
-就是该抓的字母，第 7 篇会用到；但在本 dump
-上它什么也选不中，空文件就是正确答案，不是命令坏了。</p>
-<p><strong>第二条为什么用 <code>&gt;&gt;</code>：</strong>
-<code>&gt;</code> 会截断。两次都用
-<code>&gt;</code>，<code>in.txt</code>
-里只剩空闲任务——这个练习就是让你记住这一点。</p>
-<p><strong>输出长这样：</strong> 每个任务一截头部加自己的栈：</p>
+<p><code>UN</code> 不在其中，是因为崩溃时没有处于
+<code>TASK_UNINTERRUPTIBLE</code>（<code>ps(1)</code> 里的
+<code>D</code>）的任务。文件系统或驱动卡死时才会出现 <code>UN</code>，第
+7 篇会用到；这份 dump 上它什么也选不中，空文件就是正确结果。</p>
+<p>第二条用 <code>&gt;&gt;</code>，因为 <code>&gt;</code>
+会截断。两次都用 <code>&gt;</code>，<code>in.txt</code>
+里只剩空闲任务。</p>
+<p>每个任务的输出是头部加自己的栈：</p>
 <pre><code>PID: 1        TASK: ffff888002949c00  CPU/NUMA:    3/0    COMMAND: &quot;systemd&quot;
- #0 [ffffc900000b3d48] __schedule at ffffffff816708b8
- ...</code></pre>
+ #0 [ffffc900000b3d48] __schedule at ffffffff816708b8</code></pre>
 <h2 id="2-不知道-pid切到-panic-任务">2. 不知道 PID，切到 panic 任务</h2>
 <pre class="crash"><code>set -p
 task</code></pre>
-<p>能证明你选对的是 <code>task</code>
-打出来的状态，它把所有睡眠任务和这个任务区分开：</p>
+<p><code>task</code> 打出的状态能证明选对了：</p>
 <pre><code>    PID: 581
 COMMAND: &quot;bash&quot;
    TASK: ffff88807db98000  [THREAD_INFO: ffff88807db98000]
     CPU/NUMA:    1/0
   STATE: TASK_RUNNING (PANIC)</code></pre>
-<p><code>(PANIC)</code> 是 <code>crash</code>
-在说：它选的是内核死时正在跑的任务，不是猜的。dump 里根本没有 panic
-任务时——比如 QEMU monitor 抓的——<code>set -p</code>
-变不出一个来，诚实的做法是启动时用 <code>--no_panic</code>，落在
+<p><code>(PANIC)</code> 表示 <code>crash</code>
+选中的是内核死时正在运行的任务。dump 里没有 panic 任务时（例如 QEMU
+monitor 抓的），启动时用 <code>--no_panic</code>，上下文落在
 <code>swapper/0</code> 上。</p>
-<p>想看得更窄，用 <code>task -R __state</code>：</p>
+<p>只看状态成员：</p>
 <pre><code>crash&gt; task -R __state
 PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
   __state = 0,</code></pre>
-<p><code>__state = 0</code> 就是 <code>TASK_RUNNING</code>，和&quot;panic
-任务正在 CPU 上跑&quot;对得上。注意成员名：这个内核叫
-<code>__state</code>，不叫 <code>state</code>，所以
-<code>task -R state</code> 会失败，报错本身就是提示。</p>
+<p>这个内核的成员叫 <code>__state</code>，不是 <code>state</code>，所以
+<code>task -R state</code> 会失败。</p>
 <h2 id="3-能干净退出的命令文件">3. 能干净退出的命令文件</h2>
 <pre><code># triage.crash
 set scroll off
@@ -293,21 +285,13 @@ mod
 exit</code></pre>
 <div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> <span class="at">-i</span> triage.crash ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore <span class="op">&gt;</span> report.txt</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="va">$?</span></span></code></pre></div>
-<p><strong>末尾必须写：</strong> <code>exit</code>。</p>
-<p><strong>忘了会怎样：</strong> 文件读完 <code>crash</code>
-一样会退出，不会挂住——但返回码是 <strong>1</strong>，外面任何检查
-<code>$?</code>
-的包装脚本都会把这次分诊记成失败。这比挂住更糟，因为它不吭声：</p>
+<p>末尾必须写 <code>exit</code>。不写也能结束，但返回码是 1：</p>
 <pre><code>$ crash -s --no_scroll -i noexit.crash vmlinux vmcore &gt; /dev/null; echo $?
 1
 $ crash -s --no_scroll -i triage.crash vmlinux vmcore &gt; /dev/null; echo $?
 0</code></pre>
-<p><strong>为什么要 <code>-s --no_scroll</code>：</strong>
-不加它们，分页器可能在非交互运行里把输出吞掉，而文件里的
-<code>set scroll off</code> 可能已经太晚。<code>-s</code> 同时把
-<code>silent</code> 打开，报告里只留数据，不留横幅。</p>
-<p><strong>可复现性：</strong>
-两次运行行数相同、结构相同。地址、PID、时间戳随 dump
-变，别的都不该变。</p>
+<p><code>-s --no_scroll</code>
+关掉分页器和横幅，报告里只留数据。两次运行行数相同、结构相同，只有地址随
+dump 变。</p>
 </body>
 </html>
