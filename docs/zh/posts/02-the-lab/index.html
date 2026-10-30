@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>搭一个能崩的内核，也搭一个看得懂的 dump</title>
+  <title>编译内核，生成vmcore</title>
   <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -233,19 +233,10 @@ margin: 1.5rem 0;
 </style>
 </head>
 <body>
-<h1 id="搭一个能崩的内核也搭一个看得懂的-dump">搭一个能崩的内核，也搭一个看得懂的
-dump</h1>
-<p><strong>事后分析能走多远，取决于产出这份 dump
-的内核。第一次崩之前，你需要三件事：带结构体布局的调试信息、能解析故障代码的符号、以及一个愿意把内存交给第二个内核的内核。之后，崩溃本身只是四条命令。</strong></p>
-<p>本实验的第一次尝试只得到一行：</p>
-<pre><code>$ crash -s ~/crash-lab/linux/arch/x86/boot/bzImage ~/crash-lab/vmcore
-crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file format</code></pre>
-<p>机器启动要用 <code>bzImage</code>，<code>crash</code> 读的是
-<code>vmlinux</code>。下面这套流程，先把这一个坑之外的都铺平。</p>
-<p>文中路径缩写为
-<code>~/crash-lab</code>。地址、构建号和大小都来自某一次具体构建，你的会不一样。</p>
+<h1 id="编译内核生成vmcore">编译内核，生成vmcore</h1>
+<p><strong>编译内核：编译一个带结构体布局的调试信息、能解析故障代码的符号、以及支持crashdump的内核。</strong></p>
 <h2 id="内核必须有什么">内核必须有什么</h2>
-<p>一个内核可以很健康，却完全没法做事后分析。关键的选项：</p>
+<p>关键的选项：</p>
 <table>
 <thead>
 <tr>
@@ -263,18 +254,17 @@ crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file for
 <tr>
 <td><code>CONFIG_DEBUG_INFO_DWARF5</code></td>
 <td><code>y</code></td>
-<td>现代默认；工具不认时退到 <code>DWARF4</code></td>
+<td>默认格式</td>
 </tr>
 <tr>
 <td><code>CONFIG_DEBUG_INFO_REDUCED</code></td>
 <td><code>n</code></td>
-<td>精简 DWARF 会丢结构体成员，<code>ps</code>、<code>struct</code>
-直接失效</td>
+<td>精简 DWARF 会丢结构体成员，crash目前还不支持</td>
 </tr>
 <tr>
 <td><code>CONFIG_DEBUG_INFO_SPLIT</code></td>
 <td><code>n</code></td>
-<td>类型被拆到 <code>.dwo</code>，<code>vmlinux</code> 里就没有了</td>
+<td>crash目前还不支持</td>
 </tr>
 <tr>
 <td><code>CONFIG_KALLSYMS</code></td>
@@ -284,7 +274,7 @@ crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file for
 <tr>
 <td><code>CONFIG_KALLSYMS_ALL</code></td>
 <td><code>n</code></td>
-<td>数据符号；这里关着，代价看得见</td>
+<td>数据符号；建议打开，笔者实验中是关闭的</td>
 </tr>
 <tr>
 <td><code>CONFIG_UNWINDER_ORC</code></td>
@@ -299,7 +289,7 @@ crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file for
 <tr>
 <td><code>CONFIG_KEXEC</code>、<code>CONFIG_CRASH_DUMP</code>、<code>CONFIG_PROC_VMCORE</code></td>
 <td><code>y</code></td>
-<td>kdump 通路</td>
+<td>kdump 需要的config选项</td>
 </tr>
 <tr>
 <td><code>CONFIG_DEBUG_FS</code></td>
@@ -314,20 +304,18 @@ crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file for
 </tbody>
 </table>
 <p>最容易看错的是 <code>REDUCED</code> 和
-<code>SPLIT</code>：名字都像&quot;调试信息&quot;，实际不是。两个都必须关。一个能打印任务名却走不进
-<code>task_struct</code> 的 <code>ps</code>，比明确失败更糟。</p>
-<p><code>KALLSYMS_ALL</code>
-更有意思。关掉时函数符号照常解析，数据符号不行；本实验故意关着它，好让这个限制成为你看得见的东西，而不只是书上一句话。第
-17 篇会回头处理它。</p>
-<p>调试信息是真的，不是空壳：</p>
+<code>SPLIT</code>：名字都像&quot;调试信息&quot;，实际不是。两个都必须关。</p>
+<p><code>KALLSYMS_ALL</code> 关掉时函数符号照常解析，数据符号不行；第 17
+篇会回头处理它。</p>
+<p>用readelf读取elf信息：</p>
 <pre><code>$ readelf -S vmlinux | grep -E &#39;debug_info|debug_abbrev|debug_line&#39;
   [41] .debug_info       PROGBITS         0000000000000000  011acac0
   [42] .debug_abbrev     PROGBITS         0000000000000000  077525b5
   [43] .debug_line       PROGBITS         0000000000000000  07abb198</code></pre>
 <h2 id="编译">编译</h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/linux</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span><span class="st">&quot;</span><span class="va">$(</span><span class="fu">nproc</span><span class="va">)</span><span class="st">&quot;</span> bzImage modules</span></code></pre></div>
-<p>有三个产物，其中只有一个是 namelist：</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/linux</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="at">-j</span><span class="st">&quot;</span><span class="va">$(</span><span class="fu">nproc</span><span class="va">)</span><span class="st">&quot;</span> bzImage modules</span></code></pre></div>
+<p>编译出的文件：</p>
 <table>
 <thead>
 <tr>
@@ -350,10 +338,10 @@ crash: /home/you/crash-lab/linux/arch/x86/boot/bzImage: not a supported file for
 </tr>
 </tbody>
 </table>
-<p>构建会报出自己的身份，后面要用：</p>
+<p>编译信息，后面要用：</p>
 <pre><code>Kernel: arch/x86/boot/bzImage is ready  (#16)</code></pre>
 <p><code>#16 SMP PREEMPT_DYNAMIC ...</code> 就是 crash banner
-里那行版本串。它不是 build ID；两者为什么不能混用，第 1 篇讲过。</p>
+里那行版本串。</p>
 <h2 id="导出符号的坑">导出符号的坑</h2>
 <p>模块第一次链接失败：</p>
 <pre><code>ERROR: modpost: crashlab.ko: symbol &#39;debugfs_create_dir&#39; undefined!
@@ -362,63 +350,50 @@ ERROR: modpost: crashlab.ko: symbol &#39;debugfs_remove&#39; undefined!
 ERROR: modpost: crashlab.ko: symbol &#39;strim&#39; undefined!
 ERROR: modpost: crashlab.ko: symbol &#39;sysfs_streq&#39; undefined!
 make[4]: *** [scripts/Makefile.modpost:147: Module.symvers] Error 1</code></pre>
-<p>符号明明在 <code>vmlinux</code> 里，所以这事看着奇怪，直到你意识到
+<p>符号明明在 <code>vmlinux</code> 里，所以这事看着奇怪，事实上
 <code>CONFIG_TRIM_UNUSED_KSYMS=y</code>
 会把没有被树内模块使用的导出删掉。树内只有极少数 <code>=m</code>
 时，几乎什么都留不下，树外模块自然解析不了。</p>
-<p>两种解法：关掉裁剪，或者保留裁剪并显式列出例外。保留裁剪更合理——<code>vmlinux</code>
-瘦身正是这个选项的意义——所以实验室里放一个白名单：</p>
+<p>两种解决方法：关掉CONFIG_TRIM_UNUSED_KSYMS，或者显式列出例外。本实验采用一个白名单：</p>
 <pre><code>debugfs_create_dir
 debugfs_create_file_full
 debugfs_remove
 strim
 sysfs_streq</code></pre>
-<p>配置里指过去（这里不展开
-<code>~</code>，要写绝对路径或相对内核树的路径）：</p>
+<p>配置：</p>
 <pre><code>CONFIG_TRIM_UNUSED_KSYMS=y
 CONFIG_UNUSED_KSYMS_WHITELIST=&quot;/home/you/crash-lab/ksym-whitelist.txt&quot;</code></pre>
 <p><code>make olddefconfig</code> 加重编之后，导出回来了：</p>
 <pre><code>$ nm vmlinux | grep __ksymtab_debugfs_create_dir
 ffffffff819c71f4 r __ksymtab_debugfs_create_dir</code></pre>
-<p>白名单属于实验室，后续文章每加一个模式都可能要加一行。每加一次意味着重编和新的
+<p>后续文章每加一个模式都可能要加一行白名单。每加一次意味着重编和新的
 dump。</p>
 <h2 id="编译模块">编译模块</h2>
 <p><code>crashlab.ko</code> 就是 <a href="../../../crashlab/index.html"><code>crashlab/</code></a>
-里那个故意写坏的模块。它的 <code>null</code> 模式在 debugfs
-的写路径上写地址 0，于是出故障的任务就是你的 shell，栈很短：</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">volatile</span> u32 <span class="op">*</span>p <span class="op">=</span> <span class="op">(</span><span class="dt">volatile</span> u32 <span class="op">*)</span><span class="dv">0</span><span class="op">;</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    pr_info<span class="op">(</span><span class="st">&quot;CRASHLAB: null deref triggered by pid </span><span class="sc">%d</span><span class="st"> (</span><span class="sc">%s</span><span class="st">)</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>        current<span class="op">-&gt;</span>pid<span class="op">,</span> current<span class="op">-&gt;</span>comm<span class="op">);</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>p <span class="op">=</span> <span class="bn">0xdeadbeef</span><span class="op">;</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> count<span class="op">;</span>   <span class="co">/* not reached */</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
-<p>对着刚编好的树编译：</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/crashlab</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> KDIR=~/crash-lab/linux</span></code></pre></div>
-<p>在 <code>7.3.0+</code> 上第一次编译失败在一行：</p>
-<pre><code>crashlab.c:54:19: error: ‘no_llseek’ undeclared here (not in a function); did you mean ‘noop_llseek’?
-   54 |         .llseek = no_llseek,</code></pre>
-<p><code>no_llseek</code> 已经从内核里移除，模块改用
-<code>noop_llseek</code>，这也是它唯一需要改的地方。产物是一个普通的外部模块：</p>
+里那个模块。它的 <code>null</code> 模式在 debugfs 写地址 0：</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="dt">volatile</span> u32 <span class="op">*</span>p <span class="op">=</span> <span class="op">(</span><span class="dt">volatile</span> u32 <span class="op">*)</span><span class="dv">0</span><span class="op">;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    pr_info<span class="op">(</span><span class="st">&quot;CRASHLAB: null deref triggered by pid </span><span class="sc">%d</span><span class="st"> (</span><span class="sc">%s</span><span class="st">)</span><span class="sc">\n</span><span class="st">&quot;</span><span class="op">,</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>        current<span class="op">-&gt;</span>pid<span class="op">,</span> current<span class="op">-&gt;</span>comm<span class="op">);</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">*</span>p <span class="op">=</span> <span class="bn">0xdeadbeef</span><span class="op">;</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> count<span class="op">;</span>   <span class="co">/* not reached */</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div>
+<p>编译：</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ~/crash-lab/crashlab</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> KDIR=~/crash-lab/linux</span></code></pre></div>
 <pre><code>$ modinfo crashlab.ko
 author:         Crash Lab
 description:    Crash Lab deliberately buggy test module
 license:        GPL
 name:           crashlab
 vermagic:       7.3.0+ SMP preempt mod_unload</code></pre>
-<h2 id="启动拿到一个-shell">启动，拿到一个 shell</h2>
-<p>把编好的内核启动起来——虚拟机，或者一台你愿意弄坏的机器。记住你在哪个控制台拿到
-shell，并确认 <code>debugfs</code> 挂上了：</p>
+<h2 id="启动">启动</h2>
+<p>把编好的内核在虚拟机中启动起来并确认 <code>debugfs</code>
+挂上，确认用<code>crashkernel=</code> 为第二个内核预留内存：</p>
 <pre><code># mount -t debugfs none /sys/kernel/debug</code></pre>
-<p>从这里开始都在 guest 里操作。它需要这个模块和同一份
-<code>bzImage</code>；怎么放进去随你：共享目录、scp、initramfs、磁盘镜像都行。只有一条规则要注意，见下。</p>
-<h2 id="武装-crash-内核">武装 crash 内核</h2>
-<p>命令行上的 <code>crashkernel=</code>
-为第二个内核预留内存，<code>--reuse-cmdline</code>
-把这笔预留带过去：</p>
+<h2 id="crash---dump">crash -&gt; dump</h2>
 <pre><code># grep -i crash /proc/iomem
   6a000000-79ffffff : Crash kernel
 
@@ -429,24 +404,16 @@ kexec rc=0
 1
 # cat /sys/kernel/kexec_crash_size
 268435456</code></pre>
-<p><code>kexec -p</code> 吃的是 <code>bzImage</code>，不是
-<code>vmlinux</code>，而且必须是<strong>当前运行的这次构建</strong>。两者不一致时，crash
-内核就是另一个内核，dump 会丢符号。核对一下：</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> bzImage            <span class="co"># 机器启动用的那份</span></span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sha256sum</span> /path/to/bzImage   <span class="co"># kexec 将加载的那份</span></span></code></pre></div>
-<p>每次都要看 <code>kexec_crash_loaded</code>。<code>kexec -p</code>
-返回 0 和&quot;crash 内核真的已经武装&quot;是两件事，只有后者在 panic
-之后救得了你。</p>
-<h2 id="故意死一次">故意死一次</h2>
+<h2 id="触发panic">触发panic</h2>
 <p>内核里的空指针解引用默认只
-oops，机器继续跑。这正是本实验不需要的，所以先让 oops 致命：</p>
+oops，机器继续跑。这正是本实验不需要的，所以先使能panic_on_oops：</p>
 <pre><code># echo 1 &gt; /proc/sys/kernel/panic_on_oops
 # insmod crashlab.ko
 crashlab: loading out-of-tree module taints kernel.
 CRASHLAB: loaded; write &#39;null&#39; to /sys/kernel/debug/crashlab/trigger</code></pre>
 <p>然后触发：</p>
 <pre><code># echo null &gt; /sys/kernel/debug/crashlab/trigger</code></pre>
-<p>内核的遗言：</p>
+<p>内核的输出：</p>
 <pre><code>BUG: kernel NULL pointer dereference, address: 0000000000000000
 #PF: supervisor write access in kernel mode
 #PF: error_code(0x0002) - not-present page
@@ -454,14 +421,12 @@ PGD 0 P4D 0
 Oops: Oops: 0002 [#1] SMP
 CPU: 1 UID: 0 PID: 581 Comm: bash Kdump: loaded Tainted: G           O         7.3.0+ #16 PREEMPT(full)
 Tainted: [O]=OOT_MODULE</code></pre>
-<p>要看的是 <code>Kdump: loaded</code>：这是内核在确认，它死的时候 crash
-内核是武装好的。没有这行，机器只会重启，你什么都拿不到。</p>
 <h2 id="kdump-启动与抓取">kdump 启动与抓取</h2>
-<p>crash 内核带着一个额外参数启动，指向死掉的内核留下的状态：</p>
-<pre><code>Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0 crashkernel=256M</code></pre>
-<p>并且它知道自己面对的是什么：</p>
-<pre><code>vmcore: dump is from kernel 7.3.0+</code></pre>
-<p>登录，然后把 dump 从 <code>/proc/vmcore</code> 写出来：</p>
+<p>crash 内核启动：</p>
+<pre><code>Command line: elfcorehdr=0x6a000000 rw ... console=ttyS0
+...
+vmcore: dump is from kernel 7.3.0+</code></pre>
+<p>把 dump 从 <code>/proc/vmcore</code> 写出来：</p>
 <pre><code># makedumpfile -l -d 31 /proc/vmcore /root/vmcore
 The kernel version is not supported.
 The makedumpfile operation may be incomplete.
@@ -470,22 +435,17 @@ The makedumpfile operation may be incomplete.
 The dumpfile is saved to /root/vmcore.
 
 makedumpfile Completed.</code></pre>
-<p>这段输出里藏着两个细节。</p>
-<p><code>The kernel version is not supported</code> 是
-<code>makedumpfile 1.7.9++</code> 不认识 <code>7.3.0+</code>。dump
-本身没问题——kdump 内核已经说了版本，<code>crash</code>
-读它也不抱怨。这是版本表滞后，不用追。</p>
 <p><code>-d 31</code>
 会过滤页类型：zero、cache、cache-private、user、free 都不写。所以每份
 dump 都是
 <code>[PARTIAL DUMP]</code>。栈、任务、slab、日志够用；需要用户页的时候换
 <code>-d 17</code> 或更完整的级别，并记住第 1 篇说过的：部分 dump
 能支撑什么。</p>
-<p>把文件拿到跑 <code>crash</code> 的机器上。</p>
+<p>把文件Copy到跑 <code>crash</code> 的机器上。</p>
 <h2 id="打开它">打开它</h2>
 <p>配上匹配的 <code>vmlinux</code>：</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore</span></code></pre></div>
-<p>banner 见第 1 篇。冒烟测试才是这篇的重点：</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-s</span> <span class="at">--no_scroll</span> ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore</span></code></pre></div>
+<p>冒烟测试：</p>
 <pre><code>crash&gt; bt
 PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
  #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
@@ -511,90 +471,46 @@ PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&qu
       BUFFERS        0            0    0% of TOTAL MEM
        CACHED    16567      64.7 MB    3% of TOTAL MEM
          SLAB     3365      13.1 MB    0% of TOTAL MEM</code></pre>
-<p>这些数字是从 <code>-d 31</code>
-之后残余的页结构算出来的，不是机器真实的用量：一份启动过 systemd 的
-guest 报 92% free 已经够可疑，同一份文件在 <code>crash 9.0.2</code>
-上还报过 97%。部分 dump 上的 <code>kmem -i</code>
-看形状就好，别当账本；<code>kmem -s</code> 列的是 slab
-缓存和对象数，是另一个问题。</p>
-<p>ORC 展开、没有帧指针，栈是完整的，这对第 6
-篇很重要；模块那一帧有符号，虽然模块的数据符号没有。<code>-s</code>
-让输出可脚本化：不加它，分页器会停下来等你。</p>
-<h2 id="qemu-monitor-兜底">QEMU monitor 兜底</h2>
-<p>kdump 会失败：没武装、没预留、crash 内核自己也崩。在 QEMU
-里总有另一条路，而且值得知道它给的是什么：</p>
+<h2 id="qemu-monitor-生成dump">QEMU monitor 生成dump</h2>
 <pre><code>(qemu) stop
 (qemu) dump-guest-memory /path/vmcore.elf
 warning: guest note is not present
 (qemu) cont</code></pre>
-<p><code>warning: guest note is not present</code>
-是这句命令诚实的部分。这份 dump 有 <code>NOTE</code> 和
-<code>LOAD</code> 段、有每个 CPU 的寄存器，但没有
-<code>VMCOREINFO</code>，因为活着的 guest 没写过它。<code>crash</code>
-打开后会说：</p>
+<p><code>warning: guest note is not present</code> 这份 dump 有
+<code>NOTE</code> 和 <code>LOAD</code> 段、有每个 CPU 的寄存器，但没有
+<code>VMCOREINFO</code>，因为 guest 没写过它。<code>crash</code>
+打开后会报：</p>
 <pre><code>crash: cannot read vmcoreinfo_data
        PANIC: &quot;&quot;</code></pre>
 <p>没有 panic 任务，没有 panic
-字符串，得到的是一台运行中机器的快照，而不是一台正在死的机器。有用，但严格少于
-kdump。要这么抓就先停住 guest，否则页是不一致的。</p>
+字符串，得到的是一台运行中机器的快照，而不是一台正在死的机器。</p>
 <h2 id="kaslr简单说">KASLR，简单说</h2>
 <p>本实验的 <code>CONFIG_RANDOMIZE_BASE</code>
 是关的，<code>vmlinux</code> 里的地址就是 dump 里的地址，不需要碰
-<code>--kaslr</code>。如果某份 dump 开了 KASLR，加载偏移就在 notes
-里，<code>crash</code> 用 <code>--kaslr auto</code> 自己找；notes 丢了的
-dump 需要从 panic 日志的 <code>Kernel Offset:</code> 里取
-<code>--kaslr &lt;offset&gt;</code>。KASLR
+<code>--kaslr</code>。KASLR
 开着时，你读到的每个地址都是相对基址的，第一件事是确认
-<code>crash</code> 找到了偏移。</p>
+<code>crash</code> 找到了kaslr偏移。</p>
 <h2 id="配置不够时会怎样">配置不够时会怎样</h2>
-<p>本实验有意的取舍，遇到时知道往哪改：</p>
+<p>本实验未开的几个CONFIG：</p>
 <ul>
-<li><code>CONFIG_KALLSYMS_ALL=n</code>：模块数据符号解析不了，模块里只能看到文本符号。第
-4 篇用手工地址绕过，第 17 篇正面处理。</li>
+<li><code>CONFIG_KALLSYMS_ALL=n</code>：模块数据符号解析不了，模块里只能看到文本符号。</li>
 <li><code>CONFIG_SLUB_DEBUG=n</code>：<code>kmem -s</code>
 会直接拒绝（<code>kmem: option requires kmem_cache_node.nr_slabs member!</code>）。要看
 slab 细节就得重编。</li>
 <li><code>CONFIG_RUST=n</code>：<code>rustfilt</code>
-没有可反解的名字，命令形式仍然可用，只是这份 dump 里没东西可试。</li>
-</ul>
-<p>规律是一样的：某条命令报出它需要的 <code>CONFIG_</code>
-选项，那就是重编清单，加上、重编、重抓。</p>
-<h2 id="易错点">易错点</h2>
-<ul>
-<li><code>bzImage</code> 不是 namelist，构建目录的 <code>vmlinux</code>
-才是。</li>
-<li><code>CONFIG_TRIM_UNUSED_KSYMS</code>
-会悄悄撤掉模块需要的导出，白名单要跟实验室一起存。</li>
-<li><code>DEBUG_INFO_REDUCED</code> 和 <code>DEBUG_INFO_SPLIT</code>
-编出来的内核能启动、不能好好调试。</li>
-<li>配置改过之后重编，即使 release 相同，也是另一个 namelist。</li>
-<li>机器启动的 <code>bzImage</code> 和 <code>kexec -p</code>
-加载的必须逐字节一致。</li>
-<li>先 <code>kexec -p</code> 再崩溃，之后核对
-<code>/sys/kernel/kexec_crash_loaded</code>。</li>
-<li>普通空指针只 oops；没有 <code>panic_on_oops=1</code>，guest
-活下来，kdump 永远不会启动。</li>
-<li><code>--reuse-cmdline</code> 必须带上
-<code>crashkernel=256M</code>，没有预留就没有地方放 crash 内核。</li>
-<li><code>makedumpfile -d 31</code>
-丢用户页和页缓存，级别要按你打算问的问题选。</li>
-<li><code>makedumpfile</code> 对新内核报版本警告是表面问题，kdump
-启动日志才是 dump 有效与否的权威。</li>
-<li>如果 <code>make defconfig</code> 报
-<code>gcc: unknown assembler invoked</code>，先看编译器包装器：写不了缓存目录的
-ccache 就会产出这句。</li>
+没有可反解的名字，目前没有用到。</li>
 </ul>
 <h2 id="练习">练习</h2>
 <ol type="1">
 <li>为什么 <code>kexec -p</code> 加载的 <code>bzImage</code>
 必须和机器启动的那份一致？</li>
 <li>哪些配置让 <code>struct task_struct</code> 在 <code>crash</code>
-里可用，尽管内核&quot;有调试信息&quot;？</li>
+里可用？</li>
 <li><code>--no_panic</code> 改变了什么，什么时候该用？</li>
 <li><code>kexec -p</code> 返回 0，你崩了机器，结果它重启而不是进入
 kdump。先查哪两件事？</li>
 </ol>
-<p>答案与推理见 <a href="answers.html"><code>answers.md</code></a>。</p>
+<p>答案见 <a href="answers.html"><code>answers.md</code></a>。</p>
 <h2 id="本篇用到的命令">本篇用到的命令</h2>
 <table>
 <thead>
@@ -606,57 +522,48 @@ kdump。先查哪两件事？</li>
 </thead>
 <tbody>
 <tr>
-<td>构建</td>
+<td>编译</td>
 <td><code>make -j&quot;$(nproc)&quot; bzImage modules</code></td>
-<td>产物存在且与配置一致</td>
+<td></td>
 </tr>
 <tr>
-<td>构建</td>
+<td>编译</td>
 <td><code>modinfo crashlab.ko</code></td>
-<td>vermagic 与内核匹配</td>
-</tr>
-<tr>
-<td>宿主</td>
-<td>两份 <code>bzImage</code> 各跑 <code>sha256sum</code></td>
-<td>启动镜像与 kexec 镜像是同一次构建</td>
+<td></td>
 </tr>
 <tr>
 <td>guest</td>
 <td><code>insmod</code>、<code>echo 1 &gt; /proc/sys/kernel/panic_on_oops</code></td>
-<td>触发器已就位且会导致 panic</td>
+<td></td>
 </tr>
 <tr>
 <td>guest</td>
 <td><code>kexec -p</code>、<code>cat /sys/kernel/kexec_crash_loaded</code></td>
-<td>crash 内核真的武装好了</td>
+<td></td>
 </tr>
 <tr>
 <td>guest</td>
 <td><code>echo null &gt; /sys/kernel/debug/crashlab/trigger</code></td>
-<td>oops</td>
+<td></td>
 </tr>
 <tr>
 <td>kdump</td>
 <td><code>makedumpfile -l -d 31 /proc/vmcore /root/vmcore</code></td>
-<td>过滤后的 dump</td>
+<td></td>
 </tr>
 <tr>
-<td>宿主</td>
+<td>host</td>
 <td><code>crash -s vmlinux vmcore</code></td>
-<td>会话</td>
+<td></td>
 </tr>
 <tr>
-<td>宿主</td>
+<td>host</td>
 <td>monitor <code>dump-guest-memory</code></td>
-<td>不走 kdump 的兜底 dump</td>
+<td></td>
 </tr>
 </tbody>
 </table>
 <hr />
-<p><strong>版本。</strong> 内核 <code>7.3.0+</code>（x86_64，无
-KASLR，DWARF5，<code>UNWINDER_ORC=y</code>，
-<code>KALLSYMS_ALL=n</code>）；<code>crash 9.0.3++</code>；<code>makedumpfile 1.7.9++</code>；QEMU
-10.1.2； GCC 15.2.1。地址与构建号随构建和运行变化。</p>
 <p>上一篇：<a href="../01-what-crash-is/index.html">认识 crash</a> ·
 下一篇：<a href="../03-the-command-language/index.html">命令语言</a> ·
 目录：<a href="../../index.html">全部文章</a></p>
