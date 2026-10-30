@@ -455,8 +455,8 @@ in memory looks like text:</p>
 000000006c6c756e: null&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;&lt;NUL&gt;</code></pre>
 <p>That is the string the module compares against, four bytes in memory
 order.</p>
-<p><code>repeat</code> is the one to avoid. It is usually a live-system
-tool.</p>
+<p><code>repeat</code> re-runs a command at a fixed interval. It is
+usually used on live systems, but it also works on a dump.</p>
 <h2 id="crashrc"><code>.crashrc</code></h2>
 <p><code>crash</code> reads <code>.crashrc</code> from the current
 directory first, then <code>$HOME</code>, and applies any

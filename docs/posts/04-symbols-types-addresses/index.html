@@ -211,8 +211,9 @@ ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]</code></pre>
 is why they resolve even for a module whose debug info has not been
 loaded. Data is different. This kernel runs with
 <code>CONFIG_KALLSYMS_ALL=n</code>, so module <em>data</em> symbols are
-not in the table — <code>sym crashlab_root</code> fails. That is why the
-module prints its own list address at load time:</p>
+not in the table — <code>sym crashlab_root</code> fails. Our module
+prints its own list address at load time so that we can use the
+value:</p>
 <pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
 <p>An address from <code>dmesg</code> is a perfectly good starting
 point. From here on, the type system does the work.</p>

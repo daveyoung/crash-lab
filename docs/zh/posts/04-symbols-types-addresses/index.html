@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>符号、类型与地址</title>
+  <title>查看符号、类型与地址</title>
   <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -168,13 +168,13 @@ margin: 1.5rem 0;
 </style>
 </head>
 <body>
-<h1 id="符号类型与地址">符号、类型与地址</h1>
-<p><strong>crash
-手里有两张表：一张把名字换成地址，另一张把地址换成含义。事后分析里的大部分糊涂，都是拿一张表去回答另一张表的问题。</strong></p>
-<p>先给一个裸地址：</p>
+<h1 id="查看符号类型与地址">查看符号、类型与地址</h1>
+<p><strong>crash 有两类信息：符号表给出名字和对应的地址，DWARF
+给出类型和成员布局。</strong></p>
+<p>先看一个裸地址，这是十进制打印的指针数值：</p>
 <pre><code>crash&gt; p 0xffffffffa0201020
 $1 = 18446744072101040160</code></pre>
-<p>这是指针的数值，十进制打印，等于什么都没说。换一个带类型的问题：</p>
+<p>换成用struct命令，同时带类型和地址：</p>
 <pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201020
 struct crashlab_obj {
   magic = 1129070914,
@@ -185,59 +185,41 @@ struct crashlab_obj {
     prev = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;
   }
 }</code></pre>
-<p>同一个地址：一个答案是个数，另一个是一个链表里的对象。差别就在类型系统，这篇讲的就是怎么有意识地用它。</p>
-<h2 id="两张表各管一摊">两张表，各管一摊</h2>
-<ul>
-<li><strong>符号表</strong>回答&quot;在哪&quot;：给名字出地址，给地址出名字。x86_64
-上它由 <code>CONFIG_KALLSYMS</code> 编进内核，<code>crash</code>
-同时也会读 <code>vmlinux</code> 里的 ELF 符号表。</li>
-<li><strong>DWARF</strong>
-回答&quot;是什么&quot;：给类型名出布局，给地址和类型就能读出字段。<code>whatis</code>
-和 <code>struct</code> 用的就是它。</li>
-</ul>
-<p>符号这一侧很直观：</p>
+<p>同一个地址，一个是数，一个是对象。</p>
+<h2 id="符号表">符号表</h2>
+<p><code>sym</code> 双向查询，并给出符号类型字母：</p>
 <pre><code>crash&gt; sym crashlab_trigger_write.cold
 ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]</code></pre>
-<p>这种函数符号来自内核的
-kallsyms，所以模块的调试信息还没加载，它照样能解析。数据不一样。这个内核是
-<code>CONFIG_KALLSYMS_ALL=n</code>，模块的<strong>数据</strong>符号不在表里——<code>sym crashlab_root</code>
-查不到。所以模块在加载时自己把链表头打出来：</p>
-<pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
-<p>从 <code>dmesg</code>
-里拿到一个地址，照样能开工。往后就交给类型系统。</p>
-<h3 id="顺手把符号表读明白">顺手把符号表读明白</h3>
-<p><code>sym</code> 每命中一条都会带上类型字母，字母有用：</p>
+<p><code>t</code>/<code>T</code>
+是文本（局部/全局），<code>d</code>/<code>D</code>
+数据，<code>b</code>/<code>B</code> bss，<code>r</code>/<code>R</code>
+只读数据。sym命令会按子串查：</p>
 <pre><code>crash&gt; sym -q crashlab
 ffffffffa0000000 (t) crashlab_trigger_write [crashlab]
 ffffffffa0000070 (t) crashlab_free_list [crashlab]
 ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]
 ffffffffa0000110 (t) crashlab_exit [crashlab]</code></pre>
-<p><code>t</code>/<code>T</code>
-是文本（局部/全局），<code>d</code>/<code>D</code>
-数据，<code>b</code>/<code>B</code> bss，<code>r</code>/<code>R</code>
-只读数据，<code>A</code> 绝对地址。<code>-q</code> 按子串过滤，比
-<code>sym -l</code>
-一页页翻强。手上有个夹在两个符号之间的地址时，<code>-p</code> 和
-<code>-n</code> 给出前后邻居：</p>
+<p>地址夹在两个符号之间时，<code>-p</code> 和 <code>-n</code>
+分别给出前后邻居：</p>
 <pre><code>crash&gt; sym -p crashlab_trigger_write.cold
 ffffffffa0000070 (t) crashlab_free_list [crashlab]
 ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]</code></pre>
-<p>在决定反汇编之前，这往往是最快的一句&quot;这地址大概在哪儿&quot;。</p>
-<h3 id="不叫-struct-的类型">不叫 struct 的类型</h3>
-<p><code>whatis</code> 除了结构体，也认 typedef 和 union：</p>
-<pre><code>crash&gt; whatis slab_flags_t
-typedef unsigned int slab_flags_t;
-SIZE: 4</code></pre>
-<p>一个成员只打出裸数字、你准备开始掩码和移位之前，值得先问一句：宽度是类型的一部分，不是值的一部分。</p>
-<h2 id="mod--s把模块的类型教给-crash">mod -S：把模块的类型教给
-crash</h2>
-<p><code>struct crashlab_obj</code> 定义在模块里，布局在
-<code>crashlab.ko</code>，不在 <code>vmlinux</code>。没告诉
-<code>crash</code> 之前，它认不出这个类型：</p>
+<p><code>whatis</code> 也能查符号的类型：</p>
+<pre><code>crash&gt; whatis init_task
+struct task_struct init_task;
+
+crash&gt; p init_task.pid
+$1 = 0</code></pre>
+<p><code>CONFIG_KALLSYMS_ALL</code>
+决定内核符号表里是否包含数据符号。关掉时只有函数符号，所以
+<code>sym crashlab_root</code>
+查不到模块的全局变量。本实验中模块在加载时打印自己的链表头，我们可以用来遍历链表：</p>
+<pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
+<h2 id="模块类型mod--s">模块类型：mod -S</h2>
+<p><code>struct crashlab_obj</code> 的定义在模块里，加载之前：</p>
 <pre><code>crash&gt; whatis struct crashlab_obj
 whatis: cannot resolve: struct crashlab_obj</code></pre>
-<p><code>mod -S</code> 把模块的调试信息读进来，并按模块在 dump
-里的加载地址做重定位：</p>
+<p>用 <code>mod -S</code> 指向模块：</p>
 <pre><code>crash&gt; mod -S ~/crash-lab/crashlab
      MODULE       NAME         TEXT_BASE       SIZE  OBJECT FILE
 ffffffffa0201100  crashlab  ffffffffa0000000  12288  ~/crash-lab/crashlab/crashlab.ko
@@ -250,42 +232,30 @@ struct crashlab_obj {
     struct list_head node;
 }
 SIZE: 48</code></pre>
-<p>这一步顺手带出一个很安静的坑。<code>mod -S</code> 之后
-<code>crash</code> 知道 <code>crashlab_root</code>
-这个名字，却不知道它被搬到了哪里：</p>
+<p>加载后 <code>crash</code>
+认得类型，但模块数据符号的地址并不可靠：</p>
 <pre><code>crash&gt; p &amp;crashlab_root
 $1 = (struct crashlab_obj *) 0x1c0</code></pre>
 <p><code>0x1c0</code>
-是符号在目标文件里的偏移，不是内核地址。要么用模块自己打出来的地址，要么从别的结构体里读；模块数据符号的重定位结果别轻信。第
-17 篇会回头算这笔账。</p>
-<h2 id="从地址到对象">从地址到对象</h2>
-<p>类型在手，地址就能读了。三种写法等价，区别只在打印多少：</p>
+是符号在目标文件里的偏移，不是内核地址。模块数据的地址我们会用内核加载模块时打印的那个，或者从别的结构体里读。</p>
+<h2 id="按类型读内存">按类型读内存</h2>
+<p>三种写法，打印的内容不同：</p>
 <pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201020        # 整个对象
 crash&gt; p ((struct crashlab_obj *)0xffffffffa0201020)-&gt;magic
 $1 = 1129070914
 crash&gt; px ((struct crashlab_obj *)0xffffffffa0201020)-&gt;value
 $2 = 0x1000</code></pre>
-<p><code>struct</code> 最好读，<code>p</code>
-加强转最好放进脚本，<code>px</code> 是十六进制的
-<code>p</code>——这个会话默认十进制，所以这条差别很实在。<code>1129070914</code>
-就是 <code>0x434c4142</code>，四个字节读出来是
-<code>&quot;CLAB&quot;</code>，模块给每个对象写的魔数。</p>
-<p>就算手上没有对象，也能问成员的偏移：</p>
+<p><code>1129070914</code> 是 <code>0x434c4142</code>，读出来是
+<code>&quot;CLAB&quot;</code>。</p>
+<p>没有对象也能查成员偏移：</p>
 <pre><code>crash&gt; p &amp;((struct crashlab_obj *)0)-&gt;node
 $1 = (struct list_head *) 0x20</code></pre>
-<p>地址 0 是合法的偏移算术起点，这是从 dump 里取 <code>offsetof()</code>
-的标准手法。</p>
-<p><code>whatis</code> 也吃符号名，两张表在这里碰头：</p>
-<pre><code>crash&gt; whatis init_task
-struct task_struct init_task;
-
-crash&gt; p init_task.pid
-$1 = 0</code></pre>
-<p>符号表给地址，类型给布局，值从 dump 里读。</p>
-<h2 id="走一遍链表">走一遍链表</h2>
-<p>模块建了一条四节点的环形链表：头嵌在 root 对象里，后面是
-<code>alpha</code>、<code>beta</code>、<code>gamma</code>。<code>list</code>
-要两件事才肯走：哪个成员是链接（<code>-s struct.member</code>），以及从链接回到对象差多少（<code>-l</code>）。</p>
+<h2 id="走链表">走链表</h2>
+<p>模块加载时建了一条环形链表：头嵌在 root 对象里，后面是
+<code>alpha</code>、<code>beta</code>、<code>gamma</code>，链接成员
+<code>node</code> 在对象末尾。</p>
+<p><code>list</code>
+需要两个参数：哪个成员是链接（<code>-s struct.member</code>），链接到对象差多少（<code>-l struct.member</code>）：</p>
 <pre><code>crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0
 ffffffffa02010e0
   node = {
@@ -307,31 +277,38 @@ ffffffffa02010a0
     next = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;,
     prev = 0xffffffffa0201070 &lt;_MODULE_DATA_START_crashlab+112&gt;
   },</code></pre>
-<p>打出来的地址是 <strong>list_head
-地址</strong>，不是对象地址：第一个是头本身，走完 <code>gamma</code>
-又回到它。<code>-r</code> 顺着 <code>prev</code>
-反着走；<code>-o &lt;offset&gt;</code> 是 <code>-l</code>
-的另一种写法，给固定字节偏移。</p>
-<p>链表的头如果是独立的
-<code>LIST_HEAD()</code>、而不是嵌在对象里，就去掉
-<code>-l</code>，把头一个对象地址和 <code>-o</code> 一起给
-<code>list</code>，其余一样。</p>
-<h2 id="手算-container_of">手算 container_of</h2>
-<p><code>list</code>
-给你的是链接，对象是&quot;链接地址减偏移&quot;。这个减法自己算一次，后面的链表都会看得更踏实。<code>gamma</code>
-的 node 在 <code>0xffffffffa02010a0</code>，偏移 <code>0x20</code>：</p>
+<p>打印的是 <code>list_head</code> 地址，不是对象地址。第一个是头，走完
+<code>gamma</code> 回到它。</p>
+<p>链接可以直接当结构体读：</p>
+<pre><code>crash&gt; p *(struct list_head *)0xffffffffa0201040
+$1 = {
+  next = 0xffffffffa0201070 &lt;_MODULE_DATA_START_crashlab+112&gt;,
+  prev = 0xffffffffa02010e0 &lt;_MODULE_DATA_START_crashlab+224&gt;
+}</code></pre>
+<p>反着走用 <code>-r</code>，从头的 <code>prev</code> 开始：</p>
+<pre><code>crash&gt; list -r -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0
+ffffffffa02010e0
+  node = {
+[...]
+ffffffffa02010a0</code></pre>
+<p><code>-l</code> 写成 <code>struct.member</code>
+时，类型必须已经加载。<code>mod -S</code> 没成功就会报
+<code>list: invalid -l option: crashlab_obj.node</code>，而不是去猜偏移。</p>
+<p>对象地址是链接地址减偏移。<code>gamma</code> 的 node 在
+<code>0xffffffffa02010a0</code>：</p>
 <pre><code>crash&gt; eval (0xffffffffa02010a0 - 0x20)
 hexadecimal: ffffffffa0201080
-    decimal: 18446744072101040256  (-1608511360)</code></pre>
-<p><code>struct crashlab_obj 0xffffffffa0201080</code> 打出来是
-<code>name = &quot;gamma&quot;</code>、<code>value = 12288</code>。这就是
-<code>container_of(node, struct crashlab_obj, node)</code>，手算版；模块把
-<code>node</code>
-放在最后，正是为了不让这个偏移等于零——等于零的话算术没了，课也白上了。</p>
-<h2 id="同一个手法换成内核的链表">同一个手法，换成内核的链表</h2>
-<p>模块的链表是故意做小的，但上面这些不是模块专属。进程链表就是
-<code>task_struct</code> 里的一个 <code>list_head</code>，头是
-<code>init_task</code> 内嵌的 <code>tasks</code>：</p>
+    decimal: 18446744072101040256  (-1608511360)
+
+crash&gt; struct crashlab_obj 0xffffffffa0201080
+...
+  name = &quot;gamma\000\000\000\000\000\000\000\000\000\000&quot;,
+  value = 12288,</code></pre>
+<p>这就是
+<code>container_of(node, struct crashlab_obj, node)</code>。</p>
+<h2 id="内核的进程链表">内核的进程链表</h2>
+<p>同样的方法可以遍历内核链表。进程链表是 <code>task_struct</code> 里的
+<code>tasks</code> 成员，头是 <code>init_task</code> 内嵌的那个：</p>
 <pre><code>crash&gt; p &amp;init_task.tasks
 $1 = (struct list_head *) 0xffffffff81a0aa28 &lt;init_task+936&gt;
 
@@ -345,33 +322,28 @@ ffff888002949fa8
   tasks = {
     next = 0xffff8880029491a8,
     prev = 0xffffffff81a0aa28 &lt;init_task+936&gt;
-  },
-[...]</code></pre>
-<p><code>init_task</code> 走符号表就能解析，这条不需要
-<code>dmesg</code>；容器偏移是
-<code>936</code>（<code>0x3a8</code>）。链表是环形的，走回
-<code>init_task</code> 就停。把任意一个 <code>tasks</code>
-地址减去这个偏移，得到的就是可以丢给 <code>struct</code> 的
-<code>task_struct</code>，后面大多数和任务相关的文章都从这里起步。</p>
-<h2 id="反汇编以及有源码的时候">反汇编，以及有源码的时候</h2>
-<p><code>dis</code> 把符号背后的指令摊开：</p>
+  },</code></pre>
+<p>container_of偏移是 <code>936</code>（<code>0x3a8</code>）。链表走回
+<code>init_task</code> 结束。</p>
+<h2 id="反汇编">反汇编</h2>
+<p><code>dis</code> 打印符号对应的指令：</p>
 <pre><code>crash&gt; dis crashlab_trigger_write
 0xffffffffa0000000 &lt;crashlab_trigger_write&gt;:    endbr64
 0xffffffffa0000004 &lt;crashlab_trigger_write+4&gt;:  xor    %eax,%eax
 0xffffffffa0000006 &lt;crashlab_trigger_write+6&gt;:  test   %rdx,%rdx
 0xffffffffa0000009 &lt;crashlab_trigger_write+9&gt;:  je     0xffffffffa0000062 &lt;crashlab_trigger_write+98&gt;
-[...]
-0xffffffffa0000024 &lt;crashlab_trigger_write+36&gt;: jne    0xffffffffa000004e &lt;crashlab_trigger_write+78&gt;</code></pre>
-<p>加 <code>-l</code> 会把源码行插进来，因为 DWARF 记下了构建路径：</p>
+[...]</code></pre>
+<p>给一个地址时只反汇编一条，可以指定数量：<code>dis &lt;address&gt; &lt;count&gt;</code>。</p>
+<p><code>-l</code> 带源码行：</p>
 <pre><code>crash&gt; dis -l crashlab_trigger_write
 ~/crash-lab/crashlab/crashlab.c: 90
 0xffffffffa0000000 &lt;crashlab_trigger_write&gt;:    endbr64
 ~/crash-lab/crashlab/crashlab.c: 93
 0xffffffffa0000004 &lt;crashlab_trigger_write+4&gt;:  xor    %eax,%eax</code></pre>
-<p>源码树后来搬过家，记录里的路径就失效，行号也就没了。<code>crash --src ~/crash-lab/linux ...</code>
-把内核符号指到新位置；模块的路径跟着模块自己的 DWARF 走。</p>
-<h2 id="地址翻译一页一页来">地址翻译，一页一页来</h2>
-<p><code>vtop</code> 走页表。模块数据页：</p>
+<p>源码树路径如果失效，行号就无法显示。可用<code>crash --src ~/crash-lab/linux ...</code>
+指向新的位置。</p>
+<h2 id="地址翻译">地址翻译</h2>
+<p><code>vtop</code> 走页表：</p>
 <pre><code>crash&gt; vtop 0xffffffffa0201020
 VIRTUAL           PHYSICAL
 ffffffffa0201020  30ee020
@@ -385,96 +357,47 @@ PAGE DIRECTORY: 201a067
 
       PTE         PHYSICAL  FLAGS
 80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
-<p>这个 PTE 值可以再交回给 <code>crash</code>：</p>
+<p><code>pte</code> 用 PTE 值查标志：</p>
 <pre><code>crash&gt; pte 80000000030ee163
       PTE         PHYSICAL  FLAGS
 80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
-<p><code>pte</code> 要的是
-PTE，不是虚拟地址；给错了不会报错，只会得到一段看不懂的查找。<code>ptov</code>
-反着走，从物理到虚拟，但它给的是<strong>直接映射</strong>地址，不是你出发的那个模块地址：</p>
+<p><code>ptov</code> 反过来，从物理地址到直接映射地址：</p>
 <pre><code>crash&gt; ptov 0x30ee020
 ffff8880030ee020</code></pre>
-<p>两个虚拟地址指向同一个物理页。这不是工具出错：模块页和它的直接映射别名是两个映射，读内存时得清楚自己在看哪一个。</p>
-<p>页粒度的换算是同一套算术：<code>btop &lt;addr&gt;</code>
-得页号，<code>ptob &lt;page&gt;</code> 得页对齐地址。</p>
+<p>返回的不是模块地址，而是同一个物理页的直接映射别名。两个虚拟地址指向同一个页。</p>
+<p>页号换算：</p>
 <pre><code>crash&gt; btop 0x30ee020
 30ee020: 30ee
 crash&gt; ptob 30ee
 30ee: 30ee000</code></pre>
-<h2 id="kaslr以及两张表何时对不上">KASLR，以及两张表何时对不上</h2>
-<p>这个内核 <code>CONFIG_RANDOMIZE_BASE=n</code>，<code>vmlinux</code>
-里的符号地址就是 dump 里的运行地址，上面这些一次都没用到偏移。开了
-KASLR，所有地址按每次启动的偏移移动，文件里的符号对不上内存，<code>crash</code>
-得从 dump 的 notes 里拿偏移：notes 还在就用
-<code>--kaslr auto</code>，notes 丢了就从 panic 日志的
-<code>Kernel Offset:</code> 取
-<code>--kaslr &lt;offset&gt;</code>。类型系统不受影响——偏移移动的是地址，不是布局——但每一条
-<code>sym</code> 的答案都受影响。</p>
-<h2 id="当链表其实是棵树">当&quot;链表&quot;其实是棵树</h2>
-<p><code>list</code> 顺着 <code>next</code>/<code>prev</code>
-走。内核里还有 radix tree、XArray、maple
-tree、rbtree，这些不是链表：<code>crash</code> 用
-<code>tree -t xarray|maple|rbtree &lt;root&gt;</code>
-走，<code>-s</code>/<code>-l</code> 的思路一样。某个结构体明明有
-<code>list_head</code>
-却怎么都找不到你的对象，先怀疑拿错了成员：<code>whatis struct &lt;type&gt;</code>
-会把成员列全，你想要的那个可能是个树节点。</p>
-<h2 id="配置不够时这些命令怎么用">配置不够时，这些命令怎么用</h2>
-<p>本篇有几样工具要内核选项配合，本实验没有开。命令形式仍然值得知道，重编一次就能用：</p>
+<h2 id="kaslr">KASLR</h2>
+<p>这个内核
+<code>CONFIG_RANDOMIZE_BASE=n</code>，文件里的符号地址就是运行地址。开了
+KASLR 时，地址整体偏移：notes 还在就用 <code>--kaslr auto</code>，notes
+丢了就从 panic 日志的 <code>Kernel Offset:</code> 取
+<code>--kaslr &lt;offset&gt;</code>。</p>
+<h2 id="需要额外配置的命令">需要额外配置的命令</h2>
 <ul>
-<li><p><strong><code>rustfilt &lt;symbol&gt;</code></strong>：把 Rust
-符号（<code>_RNv...</code>）还原成人能读的
-<code>crate::module::function</code>。需要
-<code>CONFIG_RUST=y</code>；Rust
-关着就没有可还原的名字，所以这篇没有它的输出。真用得上时，<code>sym</code>
-和 <code>bt</code> 给的是名字，<code>rustfilt</code>
-给的是能读的名字。</p></li>
-<li><p><strong><code>tree -t xarray|maple|rbtree &lt;root&gt;</code></strong>：走树，不走
-<code>list_head</code>。根地址从拥有它的结构体里取，比如 VMA 的 maple
-tree 是
-<code>p &amp;&lt;task&gt;-&gt;mm-&gt;mm_mt</code>；<code>-s</code>/<code>-l</code>
-描述条目的方式和 <code>list</code>
-一样。发现自己拿到的是树节点而不是链表链接时，换它。</p></li>
-<li><p><strong><code>kmem -s</code></strong>：走 slab 需要
-<code>CONFIG_SLUB_DEBUG=y</code>。没有时 <code>crash</code> 会直说：</p>
+<li><p><code>rustfilt &lt;symbol&gt;</code>：还原 Rust
+符号（<code>_RNv...</code>），需要
+<code>CONFIG_RUST=y</code>。本实验的内核没有开，所以没有输出。</p></li>
+<li><p><code>tree -t xarray|maple|rbtree &lt;root&gt;</code>：走树而不是链表，根地址从owner的结构体取，例如
+<code>p &amp;&lt;task&gt;-&gt;mm-&gt;mm_mt</code>。<code>-s</code>/<code>-l</code>
+的用法和 <code>list</code> 一样。</p></li>
+<li><p><code>kmem -s</code>：需要
+<code>CONFIG_SLUB_DEBUG=y</code>，否则会报：</p>
 <pre><code>crash&gt; kmem -s
 kmem: option requires kmem_cache_node.nr_slabs member!
-(the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre>
-<p><code>whatis struct kmem_cache</code>
-照常可用，所以类型这一侧不受影响。</p></li>
-</ul>
-<p>规律是一样的：哪条命令报出它要的 <code>CONFIG_</code>
-选项，那就是重编清单；加上、重编、重抓 dump。</p>
-<h2 id="易错点">易错点</h2>
-<ul>
-<li><code>p &lt;地址&gt;</code> 打的是指针的数值。要读对象，用
-<code>struct &lt;type&gt; &lt;地址&gt;</code> 或加强转。</li>
-<li><code>struct</code> 要的是<strong>对象</strong>地址，不是它
-<code>list_head</code> 的地址。</li>
-<li><code>list</code> 配 <code>-l</code> 要给链接地址，配
-<code>-o</code>
-要给对象地址；混着来会得到看着像样、其实全错的输出。</li>
-<li>模块类型要 <code>mod -S</code>；模块数据符号要
-<code>CONFIG_KALLSYMS_ALL</code>。本实验两样都没开。</li>
-<li>模块数据符号解析出一个小数值（比如
-<code>0x1c0</code>），那是文件内偏移，不是地址。</li>
-<li><code>vtop</code> 翻用户地址用的是当前上下文，先 <code>set</code>
-到那个任务。</li>
-<li><code>pte</code> 要 PTE 值，不是虚拟地址；值从 <code>vtop</code>
-来。</li>
-<li><code>dis -l</code> 和 <code>--src</code> 需要 DWARF
-记录里的源码树；引用行号之前先确认。</li>
-<li>KASLR 破坏的是文件到内存的地址映射，不是类型。</li>
+(the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre></li>
 </ul>
 <h2 id="练习">练习</h2>
 <ol type="1">
-<li>走一遍模块的链表，打出第二个普通对象的 <code>magic</code> 和
-<code>name</code>。对象地址从哪条命令来，偏移是多少？</li>
-<li>把一个 <code>crashlab_obj</code>
-的虚拟地址翻成物理地址再翻回来。它的 PTE 里哪些标志置位？为什么
-<code>ptov</code> 的结果不是你出发的那个地址？</li>
+<li>遍历模块的链表，打出第二个普通对象的 <code>magic</code> 和
+<code>name</code>。对象地址从哪来，偏移是多少？</li>
+<li>把一个 <code>crashlab_obj</code> 的虚拟地址翻成物理地址再翻回来。PTE
+里哪些标志置位？为什么 <code>ptov</code> 的结果和出发地址不同？</li>
 <li>哪条命令给出 <code>struct kmem_cache</code>
-的定义，哪条打印某个具体地址上的内容？</li>
+的定义，哪条打印某个地址上的内容？</li>
 </ol>
 <p>答案见 <a href="answers.html"><code>answers.md</code></a>。</p>
 <h2 id="速查">速查</h2>
@@ -495,7 +418,7 @@ kmem: option requires kmem_cache_node.nr_slabs member!
 <td><code>sym &lt;address&gt;</code></td>
 </tr>
 <tr>
-<td>类型长什么样</td>
+<td>类型定义</td>
 <td><code>whatis struct &lt;type&gt;</code></td>
 </tr>
 <tr>
@@ -523,19 +446,15 @@ kmem: option requires kmem_cache_node.nr_slabs member!
 <td><code>list -s &lt;type&gt;.&lt;member&gt; -l &lt;type&gt;.&lt;member&gt; &lt;head&gt;</code></td>
 </tr>
 <tr>
-<td>反着走</td>
-<td><code>list -r ...</code></td>
-</tr>
-<tr>
 <td>地址算术</td>
 <td><code>eval (&lt;a&gt; - &lt;b&gt;)</code></td>
 </tr>
 <tr>
-<td>指令</td>
-<td><code>dis &lt;symbol&gt;</code></td>
+<td>反汇编</td>
+<td><code>dis &lt;symbol&gt;</code>，<code>dis &lt;address&gt; &lt;count&gt;</code></td>
 </tr>
 <tr>
-<td>指令加行号</td>
+<td>带源码行</td>
 <td><code>dis -l &lt;symbol&gt;</code></td>
 </tr>
 <tr>
@@ -560,10 +479,11 @@ kmem: option requires kmem_cache_node.nr_slabs member!
 <p><strong>版本。</strong> <code>crash 9.0.3++</code>（gdb 16.2）；内核
 <code>7.3.0+</code>（x86_64，DWARF5，
 <code>UNWINDER_ORC=y</code>，<code>KALLSYMS_ALL=n</code>，无
-KASLR）；模块 <code>crashlab.ko</code> 与同一棵树 编译；dump
-<code>vmcore-raw</code>，<code>makedumpfile -l -d 31</code>。模块地址和堆地址每次运行都会
-变，链表头从 <code>dmesg</code> 取。</p>
+KASLR）；dump <code>vmcore-raw</code>，
+<code>makedumpfile -l -d 31</code>。地址每次运行都会变，链表头从
+<code>dmesg</code> 取。</p>
 <p>上一篇：<a href="../03-the-command-language/index.html">命令语言</a>
-· 目录：<a href="../../index.html">全部文章</a></p>
+· 下一篇：<a href="../05-the-panic-stack/index.html">panic 栈</a> ·
+目录：<a href="../../index.html">全部文章</a></p>
 </body>
 </html>

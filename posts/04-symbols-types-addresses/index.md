@@ -38,7 +38,7 @@ crash> sym crashlab_trigger_write.cold
 ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]
 ```
 
-Function symbols like that one come from the kernel's kallsyms, which is why they resolve even for a module whose debug info has not been loaded. Data is different. This kernel runs with `CONFIG_KALLSYMS_ALL=n`, so module *data* symbols are not in the table — `sym crashlab_root` fails. That is why the module prints its own list address at load time:
+Function symbols like that one come from the kernel's kallsyms, which is why they resolve even for a module whose debug info has not been loaded. Data is different. This kernel runs with `CONFIG_KALLSYMS_ALL=n`, so module *data* symbols are not in the table — `sym crashlab_root` fails. Our module prints its own list address at load time so that we can use the value:
 
 ```
 CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)

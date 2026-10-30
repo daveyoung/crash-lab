@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="generator" content="pandoc" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>符号、类型与地址 — 答案</title>
+  <title>查看符号、类型与地址 — 答案</title>
   <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -168,16 +168,15 @@ margin: 1.5rem 0;
 </style>
 </head>
 <body>
-<h1 id="答案符号类型与地址">答案：符号、类型与地址</h1>
+<h1 id="答案查看符号类型与地址">答案：查看符号、类型与地址</h1>
 <h2 id="1-第二个普通对象">1. 第二个普通对象</h2>
-<p>链表头地址来自 <code>dmesg</code>，因为模块的数据符号不在 kallsyms
-里：</p>
+<p>链表头地址来自 <code>dmesg</code>：</p>
 <pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
-<p>走一遍：</p>
+<p>加载模块类型后走链表：</p>
 <pre><code>crash&gt; mod -S ~/crash-lab/crashlab
 crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0</code></pre>
 <p>条目依次是
-<code>root</code>（头的容器）、<code>alpha</code>、<code>beta</code>、<code>gamma</code>。打出来的是
+<code>root</code>、<code>alpha</code>、<code>beta</code>、<code>gamma</code>。打印的是
 <code>list_head</code> 地址，减掉偏移 <code>0x20</code>
 才是对象地址：</p>
 <table>
@@ -216,7 +215,7 @@ crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0</cod
 </tr>
 </tbody>
 </table>
-<p><strong>第二个普通对象</strong>是 <code>beta</code>：</p>
+<p>第二个普通对象是 <code>beta</code>：</p>
 <pre><code>crash&gt; struct crashlab_obj 0xffffffffa0201050
 struct crashlab_obj {
   magic = 1129070914,
@@ -227,55 +226,43 @@ struct crashlab_obj {
     prev = 0xffffffffa0201040 &lt;_MODULE_DATA_START_crashlab+64&gt;
   }
 }</code></pre>
-<p><code>magic = 1129070914</code> 就是
-<code>0x434c4142</code>，四个字节 <code>&quot;CLAB&quot;</code>。偏移可以从
-<code>list -l crashlab_obj.node</code> 来，也可以用
-<code>p &amp;((struct crashlab_obj *)0)-&gt;node</code> 读到，两个都是
-<code>0x20</code>，只是问法不同。</p>
-<h2 id="2-虚拟地址与物理地址来回翻译">2. 虚拟地址与物理地址来回翻译</h2>
+<p><code>1129070914</code> 是 <code>0x434c4142</code>，也就是
+<code>&quot;CLAB&quot;</code>。偏移可以从 <code>list -l</code> 得到，也可以用
+<code>p &amp;((struct crashlab_obj *)0)-&gt;node</code> 查，都是
+<code>0x20</code>。</p>
+<h2 id="2-虚拟地址与物理地址">2. 虚拟地址与物理地址</h2>
 <pre><code>crash&gt; vtop 0xffffffffa0201020
 VIRTUAL           PHYSICAL
 ffffffffa0201020  30ee020
 
       PTE         PHYSICAL  FLAGS
 80000000030ee163   30ee000  (PRESENT|RW|ACCESSED|DIRTY|GLOBAL|NX)</code></pre>
-<p><strong>标志位：</strong>
-<code>PRESENT</code>（映射存在）、<code>RW</code>（可写）、<code>ACCESSED</code>、<code>DIRTY</code>、<code>GLOBAL</code>（上下文切换时不被刷掉，内核映射通常这么标）、<code>NX</code>（不可执行——这是数据页）。</p>
+<p>标志位：<code>PRESENT</code> 映射存在，<code>RW</code>
+可写，<code>ACCESSED</code>、<code>DIRTY</code>
+已访问已修改，<code>GLOBAL</code> 上下文切换时不刷掉，<code>NX</code>
+不可执行。</p>
 <p>反着走：</p>
 <pre><code>crash&gt; ptov 0x30ee020
 ffff8880030ee020</code></pre>
-<p><strong>为什么不是你出发的那个地址：</strong> 模块地址
-<code>ffffffffa0201020</code> 和直接映射地址
-<code>ffff8880030ee020</code>
-是同一个物理页的两个虚拟映射。<code>ptov</code>
-按定义返回直接映射别名；模块映射在 vmalloc
-区。想拿回模块自己的地址，就得自己留着，或者用模块基址加偏移重新算——<code>ptov</code>
-不会帮你还原。</p>
-<p><code>pte 80000000030ee163</code> 用原始 PTE 值打出同样的标志位，所以
-PTE 如果不是从 <code>vtop</code> 得来的，就用它来核对。</p>
+<p><code>ffffffffa0201020</code> 和 <code>ffff8880030ee020</code>
+是同一个物理页的两个映射：前者是模块在 vmalloc
+区的地址，后者是直接映射别名。<code>ptov</code>
+返回的永远是直接映射地址，原来的模块地址要自己保留。</p>
+<p><code>pte 80000000030ee163</code> 用 PTE
+值打印同样的标志，可以从这里核对。</p>
 <h2 id="3-定义与内容">3. 定义与内容</h2>
 <ul>
-<li><p><strong>定义：</strong>
-<code>whatis struct kmem_cache</code>，打出类型、成员及其类型、大小：</p>
-<pre><code>crash&gt; whatis struct kmem_cache
-struct kmem_cache {
-    struct slub_percpu_sheaves *cpu_sheaves;
-    slab_flags_t flags;
-    unsigned long min_partial;
-    unsigned int size;
-    ...
-}</code></pre></li>
-<li><p><strong>某个地址上的内容：</strong>
-<code>struct kmem_cache &lt;地址&gt;</code>。</p></li>
+<li>定义：<code>whatis struct kmem_cache</code></li>
+<li>某个地址上的内容：<code>struct kmem_cache &lt;地址&gt;</code></li>
 </ul>
-<p>这正是全篇的分界：<code>whatis</code>
-回答&quot;这个类型长什么样&quot;，<code>struct</code> 回答&quot;这个对象里是什么&quot;。</p>
-<p>这个内核上还有一个枝节：<code>kmem -s</code> 拒绝遍历 slab
-链表，因为编译时没开 <code>CONFIG_SLUB_DEBUG</code>：</p>
+<p><code>whatis</code> 回答类型长什么样，<code>struct</code>
+回答这个对象里是什么。</p>
+<p>这个内核没有开 <code>CONFIG_SLUB_DEBUG</code>，所以
+<code>kmem -s</code> 会拒绝：</p>
 <pre><code>crash&gt; kmem -s
 kmem: option requires kmem_cache_node.nr_slabs member!
 (the kernel must be built with CONFIG_SLUB_DEBUG)</code></pre>
-<p>这是配置限制，不是符号问题。缓存地址仍然可以从指向它的结构体字段读出来，<code>whatis struct kmem_cache</code>
-也照常可用。</p>
+<p>缓存地址可以从指向它的结构体字段读出来，<code>whatis struct kmem_cache</code>
+仍然可用。</p>
 </body>
 </html>

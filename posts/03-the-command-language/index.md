@@ -259,7 +259,8 @@ crash> ascii 6c6c756e
 
 That is the string the module compares against, four bytes in memory order.
 
-`repeat` is the one to avoid. It is usually a live-system tool.
+`repeat` re-runs a command at a fixed interval. It is usually used on live
+systems, but it also works on a dump.
 
 ## `.crashrc`
 
