@@ -20,71 +20,6 @@ margin: 0 0.8em 0.2em -1.6em;
 vertical-align: middle;
 }
 .display.math{display: block; text-align: center; margin: 0.5rem auto;}
-
-html { -webkit-text-size-adjust: 100%; }
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
-code.sourceCode > span { color: inherit; text-decoration: inherit; }
-div.sourceCode { margin: 1em 0; }
-pre.sourceCode { margin: 0; }
-@media screen {
-div.sourceCode { overflow: auto; }
-}
-@media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
-}
-pre.numberSource code
-{ counter-reset: source-line 0; }
-pre.numberSource code > span
-{ position: relative; left: -4em; counter-increment: source-line; }
-pre.numberSource code > span > a:first-child::before
-{ content: counter(source-line);
-position: relative; left: -1em; text-align: right; vertical-align: baseline;
-border: none; display: inline-block;
--webkit-touch-callout: none; -webkit-user-select: none;
--khtml-user-select: none; -moz-user-select: none;
--ms-user-select: none; user-select: none;
-padding: 0 4px; width: 4em;
-color: #aaaaaa;
-}
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
-div.sourceCode
-{ }
-@media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
-}
-code span.al { color: #ff0000; font-weight: bold; } 
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.at { color: #7d9029; } 
-code span.bn { color: #40a070; } 
-code span.bu { color: #008000; } 
-code span.cf { color: #007020; font-weight: bold; } 
-code span.ch { color: #4070a0; } 
-code span.cn { color: #880000; } 
-code span.co { color: #60a0b0; font-style: italic; } 
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.do { color: #ba2121; font-style: italic; } 
-code span.dt { color: #902000; } 
-code span.dv { color: #40a070; } 
-code span.er { color: #ff0000; font-weight: bold; } 
-code span.ex { } 
-code span.fl { color: #40a070; } 
-code span.fu { color: #06287e; } 
-code span.im { color: #008000; font-weight: bold; } 
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.kw { color: #007020; font-weight: bold; } 
-code span.op { color: #666666; } 
-code span.ot { color: #007020; } 
-code span.pp { color: #bc7a00; } 
-code span.sc { color: #4070a0; } 
-code span.ss { color: #bb6688; } 
-code span.st { color: #4070a0; } 
-code span.va { color: #19177c; } 
-code span.vs { color: #4070a0; } 
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
   <style type="text/css">
 :root {
@@ -235,13 +170,10 @@ margin: 1.5rem 0;
 <body>
 <h1 id="crash-lab">Crash Lab</h1>
 <p><a href="../index.html">English</a> | <strong>中文</strong></p>
-<p>用 <code>crash</code> 做 Linux
-内核事后分析（postmortem）的实战系列。每一份 dump 都来自
-自己编译、故意弄崩的内核，而不是从别处捡来的样本。</p>
-<p>二十篇文章，分成五部分。写好的给出链接，还没写的标成&quot;待发布&quot;，写完一篇链接就
-自动出现。</p>
-<p>本实验的目标是让 <code>crash</code> 更容易上手。发现问题欢迎提
-PR。</p>
+<p>本实验是用 <code>crash</code> 做 Linux
+内核vmcore分析（postmortem）的实战系列。 分为五个部分，
+二十篇文章。本实验的目标是让 <code>crash</code>
+更容易上手。如果您发现问题欢迎提 PR。</p>
 <h3 id="第一部分--基础">第一部分 · 基础</h3>
 <ul>
 <li><strong>01.</strong> <a href="posts/01-what-crash-is/index.html">认识 crash：它需要什么</a></li>
@@ -281,15 +213,10 @@ dump</a></li>
 </ul>
 <h2 id="实验模块">实验模块</h2>
 <p><a href="../crashlab/index.html"><code>crashlab/</code></a>
-是一个故意写坏的小内核模块：从 debugfs 触发一次空指针
-解引用，另外在加载时建一条四节点的链表，方便在 dump
-里手动走一遍。它会让所在机器 panic，请只在一次性虚拟机里用。</p>
-<h2 id="构建本站">构建本站</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./build.sh</span>          <span class="co"># 生成到 docs/</span></span></code></pre></div>
-<p><code>docs/</code> 就是发布出去的内容。文章是
-Markdown，<code>build.sh</code> 用 <code>pandoc</code> 把正文、答案
-和首页渲染成自带样式的 HTML，并把答案链接改写成 <code>.html</code>。</p>
+是一个用于实验的内核模块：从 debugfs 触发一次空指针
+解引用，另外在加载时建一个四个节点的链表。它会触发内核panic，推荐在用于测试的虚拟机里
+使用。</p>
 <h2 id="许可">许可</h2>
-<p>模块使用 GPL-2.0，文章版权归作者。</p>
+<p>模块使用 GPL-2.0。</p>
 </body>
 </html>
