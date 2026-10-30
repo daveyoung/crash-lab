@@ -170,8 +170,7 @@ margin: 1.5rem 0;
 <body>
 <h1 id="panic-栈读懂崩溃现场">panic 栈：读懂崩溃现场</h1>
 <p><strong>panic
-栈最上面几帧是内核的死法，不是死因。原因在中间的异常帧，来路在它下面。</strong></p>
-<p>打开 <code>null</code> 那份 dump，直接跑 <code>bt</code>：</p>
+栈最上面几帧不是内核的panic的原因。真正原因在中间的异常帧</strong></p>
 <pre><code>crash&gt; bt
 PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;
  #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
@@ -196,12 +195,11 @@ PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&qu
 #11 [ffffc90000e6bf40] entry_SYSCALL_64_after_hwframe at ffffffff810000b0
     RIP: 00007f2e8955022e  RSP: 00007ffe3f258bf0  RFLAGS: 00000202
     ORIG_RAX: 0000000000000001  CS: 0033  SS: 002b</code></pre>
-<p>0 到 6 帧是死法：缺页被报告，oops
-处理程序判定必须停机，<code>kexec</code> 把机器交给 crash 内核。任何一次
-panic 都有类似的一串。</p>
-<p>原因在异常帧里：内核当时在执行
-<code>crashlab_trigger_write.cold+63</code>。7 到 11 帧是来路：一次
-<code>write(2)</code> 经过通用写路径进了模块。</p>
+<p>0 到 6 帧：报告缺页，oops 处理程序，<code>kexec</code> 切换到 crash
+内核。</p>
+<p>异常帧：内核当时在执行 <code>crashlab_trigger_write.cold+63</code>。7
+到 11 帧：一次 <code>write(2)</code>
+经过通用写路径调用了该模块函数。</p>
 <h2 id="先看-log">先看 log</h2>
 <p>banner 只有一行摘要，全文在 <code>log</code> 里：</p>
 <pre><code>crash&gt; log -T | grep -E &#39;BUG:|#PF|Oops:|RIP: 0010|CR2|CPU:&#39; | head
@@ -214,9 +212,9 @@ panic 都有类似的一串。</p>
 [...] CR2: 0000000000000000 CR3: 000000007dae6006 CR4: 0000000000172eb0</code></pre>
 <p>从这几行能直接读出：这是一次写操作，在进程上下文（<code>Comm: bash</code>），CPU
 1，出错地址是零。<code>Kdump: loaded</code> 说明 crash
-内核已经武装好。</p>
+内核已经加载。</p>
 <p><code>CR2</code> 是出错的地址，<code>RIP</code>
-是执行访问的指令。两者不要混用。</p>
+是执行访问的指令。</p>
 <h2 id="找-panic-任务">找 panic 任务</h2>
 <pre><code>crash&gt; bt -p
 PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: &quot;bash&quot;</code></pre>
@@ -231,7 +229,7 @@ PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: &quot;swapper
  #1 [fffffe000000deb0] default_do_nmi at ffffffff8166bff9
  [...]</code></pre>
 <p>栈里有 <code>page_fault_oops</code>/<code>oops_end</code> 的那个 CPU
-就是肇事者。另外三个停在 <code>pv_native_safe_halt</code>，那是 crash
+就是panic cpu。另外三个停在 <code>pv_native_safe_halt</code>，那是 crash
 路径用 NMI 打出来的回溯。</p>
 <h2 id="异常帧">异常帧</h2>
 <p><code>bt -e</code> 打印所有异常帧：</p>
@@ -267,10 +265,10 @@ $2 = 0xffffc90000e6be18</code></pre>
 <code>echo null</code> 写出的字节数（<code>&quot;null\n&quot;</code>）：</p>
 <pre><code>crash&gt; px ((struct pt_regs *)0xffffc90000e6bbb8)-&gt;ax
 $3 = 0x5</code></pre>
-<p>写路径把这五个字节拷进模块 16
-字节的缓冲区，字符串比较相等，然后就是那一写。</p>
+<p>写调用把这五个字节拷进模块 16
+字节的缓冲区，字符串比较相等，随后发生空指针写。</p>
 <h2 id="栈上的返回地址">栈上的返回地址</h2>
-<p><code>bt -f</code> 把每帧旁边的原始字一起打出来：</p>
+<p><code>bt -f</code> 把每帧旁边的raw 数据一起打出来：</p>
 <pre><code>crash&gt; bt -f
  #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
     ffffc90000e6bba0: ffffc90000e6bd68 ffffffff81191acc
@@ -278,9 +276,9 @@ $3 = 0x5</code></pre>
     ffffc90000e6bc30: ffffffffffffffff ffffffffa00000a2</code></pre>
 <p>栈上的 <code>ffffffffa00000a2</code> 和异常 <code>RIP</code>
 相同；<code>ffffffff81191acc</code> 是
-<code>__crash_kexec</code>。符号不可靠时，这些原始字是最后的依据。</p>
+<code>__crash_kexec</code>。符号不可靠时，用这些raw数据核对。</p>
 <h2 id="源码行">源码行</h2>
-<p><code>bt -l</code> 给每帧插上源码位置：</p>
+<p><code>bt -l</code> 给每帧加上源码位置：</p>
 <pre><code>crash&gt; bt -l
  #0 [ffffc90000e6bb98] machine_kexec at ffffffff810e5a8d
     /home/you/git/private/ai/linux/arch/x86/kernel/machine_kexec_64.c: 454

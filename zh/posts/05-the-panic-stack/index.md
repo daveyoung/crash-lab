@@ -1,8 +1,6 @@
 # panic 栈：读懂崩溃现场
 
-**panic 栈最上面几帧是内核的死法，不是死因。原因在中间的异常帧，来路在它下面。**
-
-打开 `null` 那份 dump，直接跑 `bt`：
+**panic 栈最上面几帧不是内核的panic的原因。真正原因在中间的异常帧**
 
 ```
 crash> bt
@@ -31,9 +29,9 @@ PID: 581      TASK: ffff88807db98000  CPU/NUMA:    1/0    COMMAND: "bash"
     ORIG_RAX: 0000000000000001  CS: 0033  SS: 002b
 ```
 
-0 到 6 帧是死法：缺页被报告，oops 处理程序判定必须停机，`kexec` 把机器交给 crash 内核。任何一次 panic 都有类似的一串。
+0 到 6 帧：报告缺页，oops 处理程序，`kexec` 切换到 crash 内核。
 
-原因在异常帧里：内核当时在执行 `crashlab_trigger_write.cold+63`。7 到 11 帧是来路：一次 `write(2)` 经过通用写路径进了模块。
+异常帧：内核当时在执行 `crashlab_trigger_write.cold+63`。7 到 11 帧：一次 `write(2)` 经过通用写路径调用了该模块函数。
 
 ## 先看 log
 
@@ -50,9 +48,9 @@ crash> log -T | grep -E 'BUG:|#PF|Oops:|RIP: 0010|CR2|CPU:' | head
 [...] CR2: 0000000000000000 CR3: 000000007dae6006 CR4: 0000000000172eb0
 ```
 
-从这几行能直接读出：这是一次写操作，在进程上下文（`Comm: bash`），CPU 1，出错地址是零。`Kdump: loaded` 说明 crash 内核已经武装好。
+从这几行能直接读出：这是一次写操作，在进程上下文（`Comm: bash`），CPU 1，出错地址是零。`Kdump: loaded` 说明 crash 内核已经加载。
 
-`CR2` 是出错的地址，`RIP` 是执行访问的指令。两者不要混用。
+`CR2` 是出错的地址，`RIP` 是执行访问的指令。
 
 ## 找 panic 任务
 
@@ -74,7 +72,7 @@ PID: 0        TASK: ffffffff81a0a680  CPU/NUMA:    0/0    COMMAND: "swapper/0"
  [...]
 ```
 
-栈里有 `page_fault_oops`/`oops_end` 的那个 CPU 就是肇事者。另外三个停在 `pv_native_safe_halt`，那是 crash 路径用 NMI 打出来的回溯。
+栈里有 `page_fault_oops`/`oops_end` 的那个 CPU 就是panic cpu。另外三个停在 `pv_native_safe_halt`，那是 crash 路径用 NMI 打出来的回溯。
 
 ## 异常帧
 
@@ -127,11 +125,11 @@ crash> px ((struct pt_regs *)0xffffc90000e6bbb8)->ax
 $3 = 0x5
 ```
 
-写路径把这五个字节拷进模块 16 字节的缓冲区，字符串比较相等，然后就是那一写。
+写调用把这五个字节拷进模块 16 字节的缓冲区，字符串比较相等，随后发生空指针写。
 
 ## 栈上的返回地址
 
-`bt -f` 把每帧旁边的原始字一起打出来：
+`bt -f` 把每帧旁边的raw 数据一起打出来：
 
 ```
 crash> bt -f
@@ -141,11 +139,11 @@ crash> bt -f
     ffffc90000e6bc30: ffffffffffffffff ffffffffa00000a2
 ```
 
-栈上的 `ffffffffa00000a2` 和异常 `RIP` 相同；`ffffffff81191acc` 是 `__crash_kexec`。符号不可靠时，这些原始字是最后的依据。
+栈上的 `ffffffffa00000a2` 和异常 `RIP` 相同；`ffffffff81191acc` 是 `__crash_kexec`。符号不可靠时，用这些raw数据核对。
 
 ## 源码行
 
-`bt -l` 给每帧插上源码位置：
+`bt -l` 给每帧加上源码位置：
 
 ```
 crash> bt -l
