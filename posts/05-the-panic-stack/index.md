@@ -290,6 +290,63 @@ the bad luck to be idle. Second, a stack that changes stacks mid-trace is normal
 for hardirq work on x86_64, and the marker is how `crash` tells you where the
 boundary is.
 
+## Locals and arguments: gdb mode
+
+`crash bt` is an unwinder. It prints return addresses, symbols and offsets, and
+`bt -f` adds the raw words around each frame. It does not decode variables; the
+DWARF has them, but crash's stack walk does not use it that way.
+
+The same stack through gdb does:
+
+```
+crash> gdb bt
+#0  0xffffffffa000017a in crashlab_trigger_write (file=<optimized out>, ppos=<optimized out>, ubuf=<optimized out>, count=5) at crashlab.c:134
+#1  crashlab_trigger_write (file=<optimized out>, ubuf=<optimized out>, count=5, ppos=<optimized out>) at crashlab.c:104
+#2  0xffffffff815442c2 in full_proxy_write (filp=0xffff88800520c600, buf=0x5577d955bfa0 <error: Cannot access memory at address 0x5577d955bfa0>, size=5, ppos=0xffffc90000393ef8) at fs/debugfs/file.c:389
+#3  0xffffffff813d6067 in vfs_write (file=file@entry=0xffff88800520c600, buf=buf@entry=0x5577d955bfa0 <error: Cannot access memory at address 0x5577d955bfa0>, count=count@entry=5, pos=pos@entry=0xffffc90000393ef8) at fs/read_write.c:685
+#4  0xffffffff813d665c in ksys_write (fd=<optimized out>, buf=0x5577d955bfa0 <error: Cannot access memory at address 0x5577d955bfa0>, count=5) at fs/read_write.c:739
+#5  0xffffffff818d20fa in do_syscall_x64 (regs=0xffffc90000393f48, nr=<optimized out>) at arch/x86/entry/syscall_64.c:61
+#6  do_syscall_64 (regs=0xffffc90000393f48, nr=1) at arch/x86/entry/syscall_64.c:84
+#7  0xffffffff810000b0 in entry_SYSCALL_64 () at arch/x86/entry/entry_64.S:121
+```
+
+Each frame is now a call with its arguments. `<optimized out>` marks the ones
+the compiler kept in neither a register nor a stack slot, and the two
+`crashlab_trigger_write` frames are the hot function and its cold fragment, not
+two calls.
+
+Frames are selected the way gdb selects them:
+
+```
+crash> gdb frame 0
+#0  0xffffffffa000017a in crashlab_trigger_write (file=<optimized out>, ppos=<optimized out>, ubuf=<optimized out>, count=5) at crashlab.c:134
+134			*p = 0xdeadbeef;
+crash> gdb info args
+file = <optimized out>
+ppos = <optimized out>
+ubuf = <optimized out>
+count = 5
+crash> gdb info locals
+p = 0x0
+buf = "null\000\000\377\377 \317\307\005\200\210\377\377"
+```
+
+`p = 0x0` is the pointer the store used, and `buf` holds the bytes the write
+copied. Those two facts are printed here and nowhere in `bt`.
+
+Three caveats:
+
+- Module frames need `mod -S`. Without the module's DWARF, gdb has an address
+  and a symbol from kallsyms, and no argument names.
+- `<optimized out>` is normal, not a tool failure; `bt -f` and `dis` are still
+  how you recover a value the compiler dropped.
+- `buf=0x5577… <error: Cannot access memory at address …>` is the partial dump:
+  `-d 31` does not write user pages, so gdb cannot follow the user pointer. It
+  is a statement about the dump, not about the crash.
+
+For a run of gdb commands, `set gdb on` sends everything to gdb and `crash …`
+runs native commands again; `gdb <command>` is the one-shot form.
+
 ## Process context, not interrupt context
 
 The shape of the stack answers the question before you reason about it:
@@ -344,6 +401,7 @@ different reason, and the reason is what the rest of this series keeps chasing.
 - A `?` in a trace marks an unreliable frame (the unwinder guessed). Do not build a conclusion on one.
 - Inlining and optimisation move code: `crashlab_trigger_write.cold` is the same function, not a different one.
 - `CR2` is the address that was touched; `RIP` is the instruction that touched it. Quoting one as the other is a classic mistake.
+- `bt` does not print arguments or locals; `gdb bt`, `gdb info args` and `gdb info locals` do, with `<optimized out>` where the compiler dropped a value.
 - An interrupt-context fault has a different stack shape; `current` is not necessarily the victim.
 - The panic string can name a secondary failure — a lock warning that panicked, or a BUG() on a corrupted list — rather than the first error.
 
@@ -377,8 +435,8 @@ Answers are in [`answers.md`](answers.md).
 **Versions.** `crash 9.0.3++` (gdb 16.2); kernel `7.3.0+` (x86_64, DWARF5,
 `UNWINDER_ORC=y`, no KASLR); dumps `vmcore` (NULL store) and `vmcore-irq`
 (`BUG()` in a timer callback), both from `makedumpfile -l -d 31`. The IRQ
-example comes from a later build of the same tree (`#17`) with the debug
-options enabled; the earlier sections are from `#16`. Addresses and PIDs come
+example and the gdb transcripts come from a later build of the same tree
+(`#17`) with the debug options enabled; the earlier sections are from `#16`. Addresses and PIDs come
 from one run each.
 
 Previous: [Symbols, types, addresses](../04-symbols-types-addresses/index.html) · Index: [all posts](../../index.html).
