@@ -125,7 +125,7 @@ crash> p &((struct crashlab_obj *)0)->node
 $1 = (struct list_head *) 0x20
 ```
 
-## 走链表
+## 遍历链表
 
 模块加载时建了一条环形链表：头嵌在 root 对象里，后面是 `alpha`、`beta`、`gamma`，链接成员 `node` 在对象末尾。
 
@@ -327,7 +327,7 @@ crash> ptob 30ee
 | 十六进制输出 | `px <expr>` |
 | 成员偏移 | `p &((struct <type> *)0)-><member>` |
 | 加载模块类型 | `mod -S <dir>` |
-| 走链表 | `list -s <type>.<member> -l <type>.<member> <head>` |
+| 遍历链表 | `list -s <type>.<member> -l <type>.<member> <head>` |
 | 地址算术 | `eval (<a> - <b>)` |
 | 反汇编 | `dis <symbol>`，`dis <address> <count>` |
 | 带源码行 | `dis -l <symbol>` |

@@ -8,7 +8,7 @@
 CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)
 ```
 
-加载模块类型后走链表：
+加载模块类型后遍历链表：
 
 ```
 crash> mod -S ~/crash-lab/crashlab

@@ -250,7 +250,7 @@ $2 = 0x1000</code></pre>
 <p>没有对象也能查成员偏移：</p>
 <pre><code>crash&gt; p &amp;((struct crashlab_obj *)0)-&gt;node
 $1 = (struct list_head *) 0x20</code></pre>
-<h2 id="走链表">走链表</h2>
+<h2 id="遍历链表">遍历链表</h2>
 <p>模块加载时建了一条环形链表：头嵌在 root 对象里，后面是
 <code>alpha</code>、<code>beta</code>、<code>gamma</code>，链接成员
 <code>node</code> 在对象末尾。</p>
@@ -442,7 +442,7 @@ kmem: option requires kmem_cache_node.nr_slabs member!
 <td><code>mod -S &lt;dir&gt;</code></td>
 </tr>
 <tr>
-<td>走链表</td>
+<td>遍历链表</td>
 <td><code>list -s &lt;type&gt;.&lt;member&gt; -l &lt;type&gt;.&lt;member&gt; &lt;head&gt;</code></td>
 </tr>
 <tr>

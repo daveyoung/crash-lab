@@ -172,7 +172,7 @@ margin: 1.5rem 0;
 <h2 id="1-第二个普通对象">1. 第二个普通对象</h2>
 <p>链表头地址来自 <code>dmesg</code>：</p>
 <pre><code>CRASHLAB: loaded 4 objects; list head at ffffffffa02010e0 (node offset 32)</code></pre>
-<p>加载模块类型后走链表：</p>
+<p>加载模块类型后遍历链表：</p>
 <pre><code>crash&gt; mod -S ~/crash-lab/crashlab
 crash&gt; list -s crashlab_obj.node -l crashlab_obj.node 0xffffffffa02010e0</code></pre>
 <p>条目依次是
