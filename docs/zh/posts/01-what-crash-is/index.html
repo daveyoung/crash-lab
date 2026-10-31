@@ -235,12 +235,12 @@ margin: 1.5rem 0;
 <body>
 <h1 id="认识-crash怎样调用crash">认识 crash：怎样调用crash</h1>
 <p><strong>一次 crash
-会话需要用户提供两个文件：一个提供内存dump数据（vmcore），一个提供调试信息（vmlinux）。</strong></p>
-<p>例如以下测试中同一份 dump，两个不同的
-vmlinux。第一个直接报错被拒：</p>
+调试会话需要用户准备两个文件：一个提供内存dump数据（vmcore），一个提供调试信息（vmlinux）。</strong></p>
+<p>下面是同一份转储文件搭配两份不同 vmlinux
+的测试示例。第一份直接报错，无法加载：</p>
 <pre><code>WARNING: could not find MAGIC_START!
 crash: ~/crash-lab/build-shift/vmlinux and ~/crash-lab/vmcore do not match!</code></pre>
-<p>第二个有一行警告但能打开正常工作：</p>
+<p>第二份仅输出一行警告，但可以正常打开、执行调试命令：</p>
 <pre><code>WARNING: kernel version inconsistency between vmlinux and dumpfile
 
       KERNEL: ~/crash-lab/build-2/vmlinux
@@ -256,49 +256,51 @@ LOAD AVERAGE: 0.72, 0.21, 0.07
      MACHINE: x86_64  (2693 Mhz)
       MEMORY: 2 GB
        PANIC: &quot;Oops: Oops: 0002 [#1] SMP&quot; (check log for details)</code></pre>
-<p><code>bt</code> 对，<code>sys</code> 对，oops 也讲得通。可这个
-namelist 仍然不是崩掉的那个内核：它是另一次构建生成的vmlinux。</p>
-<p>第一个在 <code>.config</code> 里多开了
-<code>CONFIG_IKCONFIG=y</code>；第二个用与崩溃内核完全相同的
-<code>.config</code>、在同一份干净的源码副本里重新编译的。</p>
+<p>执行 <code>bt</code>、<code>sys</code> 命令输出看起来正常，Oops
+信息也符合预期。但要注意：这份 namelist
+并不是崩溃现场对应的内核，而是基于同一配置、重新编译得到的另一份
+vmlinux。</p>
+<p>第一份 vmlinux 的差异是在 <code>.config</code> 中开启了
+<code>CONFIG_IKCONFIG=y</code>；第二份则使用和崩溃内核完全一致的
+<code>.config</code>，在同一份干净源码目录下重新编译。。</p>
 <p><img role="img" aria-label="crash 的三个输入：vmlinux 提供符号与类型，vmcore 提供内存与 notes，模块 .ko 提供模块调试信息。下方是 vmcore 的 ELF 布局" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MDAgNTYwIiB3aWR0aD0iOTAwIiBoZWlnaHQ9IjU2MCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InQgZCI+CiAgPHRpdGxlIGlkPSJ0Ij5XaGF0IGNyYXNoIHJlYWRzPC90aXRsZT4KICA8ZGVzYyBpZD0iZCI+VGhyZWUgaW5wdXRzIGZlZWQgY3Jhc2g6IHZtbGludXggZm9yIHN5bWJvbHMgYW5kIHR5cGVzLCB2bWNvcmUgZm9yIG1lbW9yeSBhbmQgbm90ZXMsIGFuZCBtb2R1bGUgLmtvIGZpbGVzIGZvciBtb2R1bGUgZGVidWdpbmZvLiBCZWxvdywgdGhlIHZtY29yZSdzIEVMRiBsYXlvdXQ6IGEgTk9URSBzZWdtZW50IGhvbGRpbmcgcGVyLUNQVSByZWdpc3RlcnMgYW5kIFZNQ09SRUlORk8sIGFuZCBMT0FEIHNlZ21lbnRzIGhvbGRpbmcgcGh5c2ljYWwgbWVtb3J5LjwvZGVzYz4KCiAgPHN0eWxlPgogICAgLmJnICAgeyBmaWxsOiAjZjdmM2VhOyB9CiAgICAuYm94ICB7IGZpbGw6ICNmZmZkZjg7IHN0cm9rZTogIzhhNmQzYjsgc3Ryb2tlLXdpZHRoOiAyOyByeDogODsgfQogICAgLm9wdCAgeyBmaWxsOiAjZmZmZGY4OyBzdHJva2U6ICNiOWE4ODg7IHN0cm9rZS13aWR0aDogMjsgc3Ryb2tlLWRhc2hhcnJheTogNiA1OyByeDogODsgfQogICAgLmNyYXNoeyBmaWxsOiAjZjFlYWRiOyBzdHJva2U6ICMyMjI1MmE7IHN0cm9rZS13aWR0aDogMi41OyByeDogMTA7IH0KICAgIC5sYmwgIHsgZm9udDogNjAwIDE4cHgvMS4yICJJb3dhbiBPbGQgU3R5bGUiLCAiUGFsYXRpbm8gTGlub3R5cGUiLCBHZW9yZ2lhLCBzZXJpZjsgZmlsbDogIzIyMjUyYTsgfQogICAgLnN1YiAgeyBmb250OiA0MDAgMTRweC8xLjM1IC1hcHBsZS1zeXN0ZW0sICJTZWdvZSBVSSIsIEhlbHZldGljYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZpbGw6ICM1YjVmNjY7IH0KICAgIC5tb25vIHsgZm9udDogMTNweC8xLjM1ICJTRk1vbm8tUmVndWxhciIsIE1lbmxvLCBDb25zb2xhcywgbW9ub3NwYWNlOyBmaWxsOiAjMjIyNTJhOyB9CiAgICAuYXJyb3d7IHN0cm9rZTogIzhhNmQzYjsgc3Ryb2tlLXdpZHRoOiAyLjU7IGZpbGw6IG5vbmU7IG1hcmtlci1lbmQ6IHVybCgjaCk7IH0KICAgIC5ydWxlIHsgc3Ryb2tlOiAjZTJkOGMzOyBzdHJva2Utd2lkdGg6IDEuNTsgfQogICAgLmhsICAgeyBmaWxsOiAjOGE2ZDNiOyB9CiAgPC9zdHlsZT4KCiAgPGRlZnM+CiAgICA8bWFya2VyIGlkPSJoIiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj4KICAgICAgPHBhdGggZD0iTSAwIDAgTCAxMCA1IEwgMCAxMCB6IiBmaWxsPSIjOGE2ZDNiIi8+CiAgICA8L21hcmtlcj4KICA8L2RlZnM+CgogIDxyZWN0IGNsYXNzPSJiZyIgeD0iMCIgeT0iMCIgd2lkdGg9IjkwMCIgaGVpZ2h0PSI1NjAiLz4KCiAgPCEtLSBpbnB1dHMgLS0+CiAgPHJlY3QgY2xhc3M9ImJveCIgeD0iMzAiIHk9IjM0IiB3aWR0aD0iMjEwIiBoZWlnaHQ9IjkyIi8+CiAgPHRleHQgY2xhc3M9ImxibCIgeD0iNDYiIHk9IjY0Ij52bWxpbnV4PC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjQ2IiB5PSI4NiI+c3ltYm9scywgdHlwZXMsIGxpbmUgaW5mbzwvdGV4dD4KICA8dGV4dCBjbGFzcz0ic3ViIiB4PSI0NiIgeT0iMTA2Ij5yZWFkIGZyb20gRFdBUkY8L3RleHQ+CgogIDxyZWN0IGNsYXNzPSJib3giIHg9IjMwIiB5PSIxNDYiIHdpZHRoPSIyMTAiIGhlaWdodD0iOTIiLz4KICA8dGV4dCBjbGFzcz0ibGJsIiB4PSI0NiIgeT0iMTc2Ij52bWNvcmU8L3RleHQ+CiAgPHRleHQgY2xhc3M9InN1YiIgeD0iNDYiIHk9IjE5OCI+UkFNIGNvbnRlbnRzICsgbm90ZXM8L3RleHQ+CiAgPHRleHQgY2xhc3M9InN1YiIgeD0iNDYiIHk9IjIxOCI+RUxGIGNvcmUgb3Iga2R1bXAgaGVhZGVyPC90ZXh0PgoKICA8cmVjdCBjbGFzcz0ib3B0IiB4PSIzMCIgeT0iMjU4IiB3aWR0aD0iMjEwIiBoZWlnaHQ9IjkyIi8+CiAgPHRleHQgY2xhc3M9ImxibCIgeD0iNDYiIHk9IjI4OCI+bW9kdWxlIC5rbzwvdGV4dD4KICA8dGV4dCBjbGFzcz0ic3ViIiB4PSI0NiIgeT0iMzEwIj5vcHRpb25hbDogbW9kdWxlIHR5cGVzPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjQ2IiB5PSIzMzAiPmFuZCBzb3VyY2UgbGluZXM8L3RleHQ+CgogIDwhLS0gY3Jhc2ggLS0+CiAgPHJlY3QgY2xhc3M9ImNyYXNoIiB4PSIzMzAiIHk9Ijk2IiB3aWR0aD0iMjMwIiBoZWlnaHQ9IjE5MCIvPgogIDx0ZXh0IGNsYXNzPSJsYmwiIHg9IjM1MiIgeT0iMTM2IiBzdHlsZT0iZm9udC1zaXplOjIycHgiPmNyYXNoPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjM1MiIgeT0iMTYyIj5lbWJlZGRlZCBnZGI8L3RleHQ+CiAgPHRleHQgY2xhc3M9InN1YiIgeD0iMzUyIiB5PSIxODIiPisga2VybmVsLWF3YXJlPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjM1MiIgeT0iMjAyIj5jb21tYW5kIGxheWVyPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJtb25vIiB4PSIzNTIiIHk9IjIzOCI+YnQsIHBzLCBrbWVtLCBsb2c8L3RleHQ+CiAgPHRleHQgY2xhc3M9Im1vbm8iIHg9IjM1MiIgeT0iMjYwIj5zdHJ1Y3QsIHN5bSwgcDwvdGV4dD4KCiAgPHBhdGggY2xhc3M9ImFycm93IiBkPSJNIDI0MCA4MCBDIDI5MCA4MCAyOTAgMTUwIDMzMCAxNTAiLz4KICA8cGF0aCBjbGFzcz0iYXJyb3ciIGQ9Ik0gMjQwIDE5MiBDIDI5MCAxOTIgMjkwIDE5NiAzMzAgMTk2Ii8+CiAgPHBhdGggY2xhc3M9ImFycm93IiBkPSJNIDI0MCAzMDQgQyAyOTAgMzA0IDMwMCAyNTAgMzMwIDIzNiIvPgoKICA8IS0tIG91dHB1dHMgLS0+CiAgPHJlY3QgY2xhc3M9ImJveCIgeD0iNjQwIiB5PSIxMjAiIHdpZHRoPSIyMzAiIGhlaWdodD0iNzAiLz4KICA8dGV4dCBjbGFzcz0ibGJsIiB4PSI2NTYiIHk9IjE1MCI+YSBkZWZlbnNpYmxlIHN0b3J5PC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjY1NiIgeT0iMTcyIj53aGF0LCB3aGVyZSwgd2hpY2ggdGFzazwvdGV4dD4KCiAgPHBhdGggY2xhc3M9ImFycm93IiBkPSJNIDU2MCAxNjAgQyA1OTUgMTYwIDYwNSAxNTYgNjQwIDE1NiIvPgoKICA8IS0tIGRpdmlkZXIgLS0+CiAgPGxpbmUgY2xhc3M9InJ1bGUiIHgxPSIzMCIgeTE9IjM5MiIgeDI9Ijg3MCIgeTI9IjM5MiIvPgoKICA8IS0tIHZtY29yZSBsYXlvdXQgLS0+CiAgPHRleHQgY2xhc3M9InN1YiIgeD0iMzAiIHk9IjQyNCIgc3R5bGU9ImZvbnQtc2l6ZToxNXB4OyBmb250LXdlaWdodDo2MDA7Ij5pbnNpZGUgYSB2bWNvcmUgKEVMRiBmb3JtKTwvdGV4dD4KCiAgPHJlY3QgY2xhc3M9ImJveCIgeD0iMzAiIHk9IjQ0MCIgd2lkdGg9IjEyMCIgaGVpZ2h0PSI4NiIvPgogIDx0ZXh0IGNsYXNzPSJtb25vIiB4PSI0NCIgeT0iNDY4Ij5FTEYgaGVhZGVyPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjQ0IiB5PSI0OTAiPmVfdHlwZSA9IENPUkU8L3RleHQ+CgogIDxyZWN0IGNsYXNzPSJib3giIHg9IjE2NiIgeT0iNDQwIiB3aWR0aD0iMzIyIiBoZWlnaHQ9Ijg2Ii8+CiAgPHRleHQgY2xhc3M9Im1vbm8iIHg9IjE4MCIgeT0iNDYyIj5QVF9OT1RFPC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjE4MCIgeT0iNDgzIj5OVF9QUlNUQVRVUyBwZXIgQ1BVOiByZWdpc3RlcnM8L3RleHQ+CiAgPHRleHQgY2xhc3M9InN1YiIgeD0iMTgwIiB5PSI1MDIiPlZNQ09SRUlORk86IHJlbGVhc2UsIGJ1aWxkLWlkLDwvdGV4dD4KICA8dGV4dCBjbGFzcz0ic3ViIiB4PSIxODAiIHk9IjUyMSI+cGFnZSBzaXplLCBzeW1ib2wgYWRkcmVzc2VzPC90ZXh0PgoKICA8cmVjdCBjbGFzcz0iYm94IiB4PSI1MDQiIHk9IjQ0MCIgd2lkdGg9IjM2NiIgaGVpZ2h0PSI4NiIvPgogIDx0ZXh0IGNsYXNzPSJtb25vIiB4PSI1MTgiIHk9IjQ2MiI+UFRfTE9BRCAmIzIxNTsgTjwvdGV4dD4KICA8dGV4dCBjbGFzcz0ic3ViIiB4PSI1MTgiIHk9IjQ4MyI+cGh5c2ljYWwgbWVtb3J5IHJhbmdlcywgb25lIHNlZ21lbnQgZWFjaDwvdGV4dD4KICA8dGV4dCBjbGFzcz0ic3ViIiB4PSI1MTgiIHk9IjUwMiI+MHgwMDAwMDAtMHgwMzAwMDAsIDB4MDUwMDAwLTB4MGEwMDAwLCAmIzgyMzA7PC90ZXh0PgogIDx0ZXh0IGNsYXNzPSJzdWIiIHg9IjUxOCIgeT0iNTIxIj4yIEdCIG9mIGd1ZXN0IFJBTSBpbiBvdXIgcnVuPC90ZXh0PgoKICA8cGF0aCBjbGFzcz0iYXJyb3ciIGQ9Ik0gMTUwIDQ4MyBMIDE2NiA0ODMiLz4KICA8cGF0aCBjbGFzcz0iYXJyb3ciIGQ9Ik0gNDg4IDQ4MyBMIDUwNCA0ODMiLz4KPC9zdmc+Cg==" alt="crash 的三个输入：vmlinux 提供符号与类型，vmcore 提供内存与 notes，模块 .ko 提供模块调试信息。下方是 vmcore 的 ELF 布局" /></p>
-<h2 id="三个参数输入其中一个是可选的">三个参数输入，其中一个是可选的</h2>
-<p><code>crash</code> 打开一份 dump 需要两样东西：</p>
+<h2 id="三类输入参数其中一类可选">三类输入参数，其中一类可选</h2>
+<p>使用 crash 打开转储文件，至少需要两份文件：</p>
 <ul>
-<li><strong>namelist</strong>，也就是构建目录里的
-<code>vmlinux</code>。符号、结构体布局、枚举值、源码行号，都从这里来。</li>
+<li><strong>namelist</strong>，也就是<code>vmlinux</code>。符号、结构体布局、枚举值、源码行号等信息，都来源于此。</li>
 <li><strong>内存镜像</strong>，也就是
-<code>vmcore</code>。寄存器状态、task 结构、slab
-页、日志缓冲区，都从这里来。</li>
+<code>vmcore</code>。寄存器现场、任务（task）结构、slab
+页面、内核日志缓冲区等运行时内存数据，都保存在这里。</li>
 </ul>
-<p>第三样输入是带调试信息的内核模块ko文件，只要栈里出现模块就变得很关键，<code>vmlinux</code>
-只知道模块的基地址和少量模块文本符号，不知道
-<code>struct crashlab_dir</code> 长什么样，也不知道
-<code>crashlab.c</code> 的哪一行崩了。第 17 篇会涉及到这个主题。</p>
-<p>另外还有<strong>内核源码树</strong>。如果它还留在 DWARF
-记录的路径上，<code>bt -l</code> 和 <code>--src</code>
-就能给出源码行。</p>
-<p>另外需要注意：<code>bzImage</code>是压缩过的启动镜像，不是
+<p>第三样输入是带调试信息的内核模块ko文件，一旦调用栈出现内核模块代码，它就至关重要：vmlinux
+仅记录模块加载基地址和少量文本段符号，无法识别
+<code>struct crashlab_dir</code> 这类自定义结构体，也无法定位
+<code>crashlab.c</code> 中引发崩溃的具体代码行。该内容会在第 17
+篇展开讲解。</p>
+<p>另外还有<strong>内核源码树</strong>。如果源码路径和 DWARF
+调试信息里记录的路径保持一致，<code>bt -l</code> 和 <code>--src</code>
+参数就可以打印出对应的源码行。</p>
+<p>重点区分：<code>bzImage</code>是压缩过的启动镜像，不是
 namelist。如果用它替代vmlinux，crash会报错：</p>
 <pre><code>crash: ~/crash-lab/bzImage: not a supported file format</code></pre>
-<p><code>System.map</code> 也不是 namelist，它只有地址到名字的映射：</p>
+<p><code>System.map</code> 同样不等于
+namelist，它只包含地址到符号名的映射：</p>
 <pre><code>crash: namelist argument required</code></pre>
-<p>因为它只有符号没有类型，例如得不到
-<code>struct task_struct</code>。</p>
-<h2 id="vmcore-里到底有什么">vmcore 里到底有什么</h2>
-<p>vmcore 分为两种格式　(kdump压缩格式和ELF格式)。</p>
-<p>本实验里的 dump 是 <strong>kdump
-压缩格式</strong>：<code>makedumpfile</code>
-过滤并压缩了页面，不是能直接丢给 <code>readelf</code> 的
-ELF。<code>file</code> 说得最清楚：</p>
+<p>它只有符号名称，缺少类型信息，因此无法解析
+<code>struct task_struct</code> 这类结构体。</p>
+<h2 id="vmcore-内部包含哪些内容">vmcore 内部包含哪些内容</h2>
+<p>vmcore 分为两种格式　(kdump压缩格式和ELF原始格式)。</p>
+<p>本文实验中的转储文件是 <strong>kdump 压缩格式</strong>：由
+<code>makedumpfile</code> 对内存页面做过滤 + 压缩处理，不能直接交给
+<code>readelf</code> 解析。通过 <code>file</code> 命令可以清晰识别：</p>
 <pre><code>vmcore: Kdump compressed dump v6, system Linux, node localhost.localdomain,
 release 7.3.0+, version #16 SMP PREEMPT_DYNAMIC Mon Oct 26 14:48:51 CST 2026,
 machine x86_64, domain (none)</code></pre>
-<p>另一种是普通 <strong>ELF core
-文件</strong>，<code>makedumpfile -E</code> 和 QEMU monitor 的
-<code>dump-guest-memory</code>
-都产出这种。信息一样，不压缩，<code>readelf</code>
-能直接看。下面是对同一台 guest 用 monitor 抓的一份：</p>
+<p>另一种是 <strong>ELF core 文件</strong>，<code>makedumpfile -E</code>
+和 QEMU monitor 的 <code>dump-guest-memory</code>
+都可以生成。两类转储承载的信息一致，ELF 格式未做压缩，可直接用
+<code>readelf</code> 解析。下面是通过 QEMU monitor
+对同一虚拟机抓取的示例：</p>
 <pre><code>Elf file type is CORE (Core file)
 Entry point 0x0
 There are 8 program headers, starting at offset 192
@@ -313,29 +315,30 @@ Program Headers:
   LOAD           0x0000000000030f40 0x0000000000050000 0x0000000000050000
                  0x0000000000050000 0x0000000000050000         0x0
 [...]</code></pre>
-<p>一个 <code>NOTE</code> 段，七个 <code>LOAD</code>
-段。<code>LOAD</code> 段是物理内存：第一段是 1MB 之前的空洞，第二段是
-VGA/BIOS 区，剩下的段摊开 2GB 的 guest 内存。</p>
-<p>真正有意思的是 <code>NOTE</code> 段。<code>readelf -n</code>
-能看到四个 <code>NT_PRSTATUS</code>，每个 vCPU
-一个，各自带着那一刻的寄存器。<code>bt -a</code>
-的四条栈就是从这里来的；另外还有 <code>NT_PRPSINFO</code>
-和辅助向量。</p>
-<p>kdump 的 dump 比 monitor dump
-多一样东西：<strong><code>VMCOREINFO</code></strong>，由崩溃时的内核写入。<code>crash</code>
-从里面读出 release、build
-ID、页大小、<code>phys_base</code>，以及把虚拟地址换算成 dump
-偏移所需的那些值。少了它，<code>crash</code> 会直接告诉你：</p>
+<p>该文件包含 1 个 NOTE 段、7 个 LOAD 段。LOAD 段对应物理内存：第一段是
+1MB 以内的内存空洞，第二段对应 VGA/BIOS 区域，其余段共同映射虚拟机 2GB
+的物理内存。</p>
+<p>其中 NOTE 段是调试的关键。执行 <code>readelf -n</code> 可以看到 4 个
+<code>NT_PRSTATUS</code> 条目，每个条目对应一个
+vCPU，保存了崩溃瞬间的寄存器上下文；<code>bt -a</code> 输出的全部 CPU
+调用栈，就来源于这里。除此之外还有 <code>NT_PRPSINFO</code>
+与辅助向量信息。</p>
+<p>kdump 生成的转储，相比 QEMU monitor
+转储多了一项关键数据：<strong><code>VMCOREINFO</code></strong>，由内核在崩溃时写入。crash
+会从中读取内核版本、Build
+ID、页大小、<code>phys_base</code>，以及虚拟地址转译为转储文件偏移所需的各项参数。如果缺失该信息，crash
+会直接报错：</p>
 <pre><code>crash: cannot read vmcoreinfo_data
       KERNEL: ~/crash-lab/linux/vmlinux
     DUMPFILE: [...]
        PANIC: &quot;&quot;</code></pre>
-<p>后果不难想：没有 panic task，会话只能落在 <code>swapper/0</code>
-上。dump 本身仍然有用——它是一份完整的内存快照——但得用户告诉
-<code>crash</code> 相关信息，这正是 <code>--no_panic</code> 和
-<code>--machdep</code> 的用武之地。</p>
-<h2 id="banner-是一张核对表">banner 是一张核对表</h2>
-<p>每次打开会话都会先从上到下过一遍。</p>
+<p>带来的后果很直观：无法定位发生 panic 的任务，调试会话默认落在
+<code>swapper/0</code>
+进程上。转储文件本身仍是一份完整内存快照，依然可用，但需要手动向 crash
+补充内核信息，这就是 <code>--no_panic</code> 和 <code>--machdep</code>
+参数的用途。</p>
+<h2 id="banner信息-一份核对清单">banner信息: 一份核对清单</h2>
+<p>每次打开 crash 会话时，首页 banner 信息自上而下逐项校验：</p>
 <ul>
 <li><strong><code>KERNEL</code></strong>：你给的 namelist，外加
 <code>[TAINTED]</code>，因为内核装了树外模块。</li>
@@ -353,12 +356,12 @@ ID、页大小、<code>phys_base</code>，以及把虚拟地址换算成 dump
 <li><strong><code>PANIC</code></strong>：<code>&quot;Oops: Oops: 0002 [#1] SMP&quot; (check log for details)</code>，内核dmesg全文可用
 <code>log</code> 命令查看。</li>
 </ul>
-<h2 id="检查两个文件是否配套的简洁命令">检查两个文件是否配套的简洁命令</h2>
+<h2 id="快速校验文件匹配关系的常用命令">快速校验文件匹配关系的常用命令</h2>
 <div class="sourceCode" id="cb8"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">--osrelease</span> <span class="op">&lt;</span>vmcore<span class="op">&gt;</span>     <span class="co"># dump 记录的 release 字符串</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">--build-id</span> <span class="op">&lt;</span>vmcore<span class="op">&gt;</span>      <span class="co"># dump 记录的 build ID</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-g</span> <span class="op">&lt;</span>vmlinux<span class="op">&gt;</span>             <span class="co"># 这个 namelist 里有没有 DWARF</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">crash</span> <span class="at">-t</span> <span class="op">&lt;</span>vmlinux<span class="op">&gt;</span> <span class="op">&lt;</span>vmcore<span class="op">&gt;</span>    <span class="co"># dump 是什么时候抓的</span></span></code></pre></div>
-<p>在本实验的 dump 上：</p>
+<p>在本实验的 dump 上执行效果：</p>
 <pre><code>$ crash --osrelease ~/crash-lab/vmcore
 7.3.0+
 
@@ -371,10 +374,12 @@ crash: /home/you/crash-lab/linux/vmlinux: contains debugging data
 
 $ crash -t ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore
 Mon Oct 26 18:58:21 CST 2026</code></pre>
-<p>前两条读的是 dump 里的 <code>VMCOREINFO</code>，它们只说明 dump
-是什么，不说明 namelist 是什么。namelist 那一侧则要看 ELF note：</p>
+<p>前两条命令读取的是 vmcore 内的
+<code>VMCOREINFO</code>，只能说明这份转储对应的内核信息，<strong>不能用来验证
+namelist 是否匹配</strong>。而 namelist 的 Build ID 需要读取 ELF
+Note：</p>
 <div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">readelf</span> <span class="at">-n</span> ~/crash-lab/linux/vmlinux <span class="kw">|</span> <span class="fu">grep</span> <span class="at">-A1</span> <span class="st">&#39;Build ID&#39;</span></span></code></pre></div>
-<p>开篇那三个 namelist 和 dump 的 build ID ：</p>
+<p>开篇几份 namelist 和转储的 Build ID 对照：</p>
 <table>
 <thead>
 <tr>
@@ -407,9 +412,9 @@ Mon Oct 26 18:58:21 CST 2026</code></pre>
 </tbody>
 </table>
 <h2 id="内核模块">内核模块</h2>
-<p>栈里一出现 <code>[module]</code>
-后缀，就是内核在加载时建的表。本实验的 <code>CONFIG_KALLSYMS_ALL</code>
-是关的，于是：</p>
+<p>调用栈中出现 <code>[module]</code>
+后缀，代表对应代码属于内核模块，相关记录保存在内核加载模块时维护的表中。本次实验内核关闭了
+<code>CONFIG_KALLSYMS_ALL</code>，现象如下：</p>
 <pre><code>crash&gt; sym crashlab_trigger_write.cold
 ffffffffa00000bd (t) crashlab_trigger_write.cold [crashlab]
 
@@ -417,22 +422,22 @@ crash&gt; sym crashlab_dir
 symbol not found: crashlab_dir
 possible alternatives:
   (none found)</code></pre>
-<p>因为它在文本段所以函数能解析；模块的全局变量
-<code>crashlab_dir</code> 不能，因为它是数据：</p>
+<p>函数属于文本段，符号可以正常解析；但模块全局变量
+<code>crashlab_dir</code> 在数据段，因此无法找到：</p>
 <pre><code>     MODULE       NAME         TEXT_BASE       SIZE  OBJECT FILE
 ffffffffa0201100  crashlab  ffffffffa0000000  12288  (not loaded)  [CONFIG_KALLSYMS]</code></pre>
-<p>这个模块确实加载了、确实触发了故障，它的 <code>struct module</code>
-在 <code>0xffffffffa0201100</code> 处读出来是
+<p>这个模块确实已经加载、并且触发了崩溃，从地址
+<code>0xffffffffa0201100</code> 读出的 <code>struct module</code> 状态为
 <code>MODULE_STATE_LIVE</code>。这里的 <code>(not loaded)</code> 是
-<code>crash</code> 在说：因为没有数据符号所以它无法完成这个关联。</p>
+crash 的提示：缺少模块数据段符号，无法完成完整符号关联。</p>
 <h2 id="练习">练习</h2>
 <ol type="1">
-<li>一份 <code>vmcore</code>、三个候选
+<li>一份 <code>vmcore</code>搭配三个候选
 <code>vmlinux</code>，哪个是对的？用哪两条命令证明？</li>
 <li>会话打开时只有
-<code>WARNING: kernel version inconsistency between vmlinux and dumpfile</code>，之后每条命令看着都对。为什么这次会话仍不可信？在发布任何结论前你会做什么？</li>
-<li>类型由哪个输入提供，内存内容由哪个提供？如果只有
-<code>System.map</code>，你失去了什么？</li>
+<code>WARNING: kernel version inconsistency between vmlinux and dumpfile</code>，后续所有调试命令输出看起来都正常，为什么这个会话依然不可信？在输出任何结论前，你会做哪些校验？</li>
+<li>类型信息由哪一份输入提供？内存内容由哪一份输入提供？如果只有
+<code>System.map</code>，会缺失哪些能力？</li>
 </ol>
 <p>答案与推理见 <a href="answers.html"><code>answers.md</code></a>。</p>
 <h2 id="本篇用到的命令">本篇用到的命令</h2>
@@ -446,35 +451,35 @@ ffffffffa0201100  crashlab  ffffffffa0000000  12288  (not loaded)  [CONFIG_KALLS
 <tbody>
 <tr>
 <td><code>crash --version</code>、<code>crash --buildinfo</code></td>
-<td>这是哪个 crash，怎么编出来的</td>
+<td>查看 crash 工具版本与编译信息</td>
 </tr>
 <tr>
 <td><code>crash --osrelease &lt;vmcore&gt;</code></td>
-<td>dump 自称是哪个 release</td>
+<td>查询转储记录的内核版本</td>
 </tr>
 <tr>
 <td><code>crash --build-id &lt;vmcore&gt;</code></td>
-<td>dump 自称是哪次构建</td>
+<td>查询转储记录的构建 ID</td>
 </tr>
 <tr>
 <td><code>crash -g &lt;vmlinux&gt;</code></td>
-<td>这个 namelist 里有没有 DWARF</td>
+<td>检查 vmlinux 是否包含 DWARF 调试信息</td>
 </tr>
 <tr>
 <td><code>crash -t &lt;vmlinux&gt; &lt;vmcore&gt;</code></td>
-<td>dump 是什么时候抓的</td>
+<td>获取转储捕获时间</td>
 </tr>
 <tr>
 <td><code>sys</code></td>
-<td>以命令形式打印 banner</td>
+<td>在命令行重新打印 banner 信息</td>
 </tr>
 <tr>
 <td><code>sym &lt;name&gt;</code></td>
-<td>这个符号在哪个地址，来自哪里</td>
+<td>查询指定符号的地址与归属</td>
 </tr>
 <tr>
 <td><code>mod</code></td>
-<td>哪些模块加载过，crash 能不能给它们的符号</td>
+<td>查看已加载模块，以及 crash 是否可以解析模块符号</td>
 </tr>
 </tbody>
 </table>

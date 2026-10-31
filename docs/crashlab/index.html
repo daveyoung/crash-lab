@@ -247,6 +247,9 @@ end of each object, so walking it back to a container needs a real
 offset. The module prints the head address and the offset to
 <code>dmesg</code>, so a dump can be explored even when module data
 symbols are not in kallsyms.</p>
+<p>Writing <code>irq</code> to the same file arms a 100 ms timer; the
+callback runs in hardirq context and hits <code>BUG()</code>, so the
+panic is taken on the IRQ stack — a second, contrasting stack shape.</p>
 <p>The <code>null</code> mode writes to a NULL pointer from the debugfs
 write path:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="op">(</span>sysfs_streq<span class="op">(</span>buf<span class="op">,</span> <span class="st">&quot;null&quot;</span><span class="op">))</span> <span class="op">{</span></span>

@@ -14,6 +14,10 @@ linkage sits at the end of each object, so walking it back to a container needs
 a real offset. The module prints the head address and the offset to `dmesg`, so
 a dump can be explored even when module data symbols are not in kallsyms.
 
+Writing `irq` to the same file arms a 100 ms timer; the callback runs in
+hardirq context and hits `BUG()`, so the panic is taken on the IRQ stack — a
+second, contrasting stack shape.
+
 The `null` mode writes to a NULL pointer from the debugfs write path:
 
 ```c

@@ -6,6 +6,9 @@
  * Mode "null" is the first case: writing "null" to the debugfs trigger
  * dereferences a NULL pointer in the write path.
  *
+ * Mode "irq" starts a timer; when it fires in hardirq context the callback
+ * hits BUG(), so the panic is taken on the IRQ stack.
+ *
  * At load time the module also builds a small doubly-linked list, so that a
  * dump contains a data structure worth walking by hand: a head embedded in a
  * root object, followed by three ordinary objects.
@@ -13,6 +16,8 @@
 
 #include <linux/debugfs.h>
 #include <linux/fs.h>
+#include <linux/hrtimer.h>
+#include <linux/ktime.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/module.h>
@@ -46,6 +51,18 @@ static struct crashlab_obj crashlab_root = {
 };
 
 static struct dentry *crashlab_dir;
+
+static struct hrtimer crashlab_timer;
+
+static enum hrtimer_restart crashlab_irq_fn(struct hrtimer *timer)
+{
+	pr_info("CRASHLAB: irq-mode fault, in_interrupt=%d, in_hardirq=%d\n",
+		in_interrupt(), in_hardirq());
+
+	BUG();
+
+	return HRTIMER_NORESTART;
+}
 
 static void crashlab_set_name(struct crashlab_obj *obj, const char *name)
 {
@@ -100,6 +117,13 @@ static ssize_t crashlab_trigger_write(struct file *file,
 	buf[count] = '\0';
 	strim(buf);
 
+	if (sysfs_streq(buf, "irq")) {
+		pr_info("CRASHLAB: arming irq-mode fault in 100ms\n");
+		hrtimer_start(&crashlab_timer, ms_to_ktime(100),
+			      HRTIMER_MODE_REL);
+		return count;
+	}
+
 	if (sysfs_streq(buf, "null")) {
 		volatile u32 *p = (volatile u32 *)0;
 
@@ -135,6 +159,9 @@ static int __init crashlab_init(void)
 	debugfs_create_file("trigger", 0600, crashlab_dir, NULL,
 			    &crashlab_trigger_fops);
 
+	hrtimer_setup(&crashlab_timer, crashlab_irq_fn, CLOCK_MONOTONIC,
+		      HRTIMER_MODE_REL);
+
 	pr_info("CRASHLAB: loaded %d objects; list head at %px (node offset %zu)\n",
 		CRASHLAB_OBJECTS + 1, &crashlab_root.node,
 		offsetof(struct crashlab_obj, node));
@@ -144,6 +171,7 @@ static int __init crashlab_init(void)
 
 static void __exit crashlab_exit(void)
 {
+	hrtimer_cancel(&crashlab_timer);
 	debugfs_remove_recursive(crashlab_dir);
 	crashlab_free_list();
 	pr_info("CRASHLAB: unloaded\n");

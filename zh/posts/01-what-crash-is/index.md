@@ -1,15 +1,15 @@
 # 认识 crash：怎样调用crash
 
-**一次 crash 会话需要用户提供两个文件：一个提供内存dump数据（vmcore），一个提供调试信息（vmlinux）。**
+**一次 crash 调试会话需要用户准备两个文件：一个提供内存dump数据（vmcore），一个提供调试信息（vmlinux）。**
 
-例如以下测试中同一份 dump，两个不同的 vmlinux。第一个直接报错被拒：
+下面是同一份转储文件搭配两份不同 vmlinux 的测试示例。第一份直接报错，无法加载：
 
 ```
 WARNING: could not find MAGIC_START!
 crash: ~/crash-lab/build-shift/vmlinux and ~/crash-lab/vmcore do not match!
 ```
 
-第二个有一行警告但能打开正常工作：
+第二份仅输出一行警告，但可以正常打开、执行调试命令：
 
 ```
 WARNING: kernel version inconsistency between vmlinux and dumpfile
@@ -29,42 +29,42 @@ LOAD AVERAGE: 0.72, 0.21, 0.07
        PANIC: "Oops: Oops: 0002 [#1] SMP" (check log for details)
 ```
 
-`bt` 对，`sys` 对，oops 也讲得通。可这个 namelist 仍然不是崩掉的那个内核：它是另一次构建生成的vmlinux。
+执行 `bt`、`sys` 命令输出看起来正常，Oops 信息也符合预期。但要注意：这份 namelist 并不是崩溃现场对应的内核，而是基于同一配置、重新编译得到的另一份 vmlinux。
 
-第一个在 `.config` 里多开了 `CONFIG_IKCONFIG=y`；第二个用与崩溃内核完全相同的 `.config`、在同一份干净的源码副本里重新编译的。
+第一份 vmlinux 的差异是在 `.config` 中开启了 `CONFIG_IKCONFIG=y`；第二份则使用和崩溃内核完全一致的 `.config`，在同一份干净源码目录下重新编译。。
 
 ![crash 的三个输入：vmlinux 提供符号与类型，vmcore 提供内存与 notes，模块 .ko 提供模块调试信息。下方是 vmcore 的 ELF 布局](assets/crash-inputs.svg)
 
-## 三个参数输入，其中一个是可选的
+## 三类输入参数，其中一类可选
 
-`crash` 打开一份 dump 需要两样东西：
+使用 crash 打开转储文件，至少需要两份文件：
 
-- **namelist**，也就是构建目录里的 `vmlinux`。符号、结构体布局、枚举值、源码行号，都从这里来。
-- **内存镜像**，也就是 `vmcore`。寄存器状态、task 结构、slab 页、日志缓冲区，都从这里来。
+- **namelist**，也就是`vmlinux`。符号、结构体布局、枚举值、源码行号等信息，都来源于此。
+- **内存镜像**，也就是 `vmcore`。寄存器现场、任务（task）结构、slab 页面、内核日志缓冲区等运行时内存数据，都保存在这里。
 
-第三样输入是带调试信息的内核模块ko文件，只要栈里出现模块就变得很关键，`vmlinux` 只知道模块的基地址和少量模块文本符号，不知道 `struct crashlab_dir` 长什么样，也不知道 `crashlab.c` 的哪一行崩了。第 17 篇会涉及到这个主题。
+第三样输入是带调试信息的内核模块ko文件，一旦调用栈出现内核模块代码，它就至关重要：vmlinux 仅记录模块加载基地址和少量文本段符号，无法识别 `struct crashlab_dir` 这类自定义结构体，也无法定位 `crashlab.c` 中引发崩溃的具体代码行。该内容会在第 17 篇展开讲解。
 
-另外还有**内核源码树**。如果它还留在 DWARF 记录的路径上，`bt -l` 和 `--src` 就能给出源码行。
+另外还有**内核源码树**。如果源码路径和 DWARF 调试信息里记录的路径保持一致，`bt -l` 和 `--src` 参数就可以打印出对应的源码行。
 
-另外需要注意：`bzImage`是压缩过的启动镜像，不是 namelist。如果用它替代vmlinux，crash会报错：
+重点区分：`bzImage`是压缩过的启动镜像，不是 namelist。如果用它替代vmlinux，crash会报错：
 
 ```
 crash: ~/crash-lab/bzImage: not a supported file format
 ```
 
-`System.map` 也不是 namelist，它只有地址到名字的映射：
+`System.map` 同样不等于 namelist，它只包含地址到符号名的映射：
 
 ```
 crash: namelist argument required
 ```
 
-因为它只有符号没有类型，例如得不到 `struct task_struct`。
+它只有符号名称，缺少类型信息，因此无法解析 `struct task_struct` 这类结构体。
 
-## vmcore 里到底有什么
+## vmcore 内部包含哪些内容
 
-vmcore 分为两种格式　(kdump压缩格式和ELF格式)。
+vmcore 分为两种格式　(kdump压缩格式和ELF原始格式)。
 
-本实验里的 dump 是 **kdump 压缩格式**：`makedumpfile` 过滤并压缩了页面，不是能直接丢给 `readelf` 的 ELF。`file` 说得最清楚：
+本文实验中的转储文件是 **kdump 压缩格式**：由 `makedumpfile` 对内存页面做过滤 + 压缩处理，不能直接交给 `readelf` 解析。通过 `file` 命令可以清晰识别：
 
 ```
 vmcore: Kdump compressed dump v6, system Linux, node localhost.localdomain,
@@ -72,7 +72,7 @@ release 7.3.0+, version #16 SMP PREEMPT_DYNAMIC Mon Oct 26 14:48:51 CST 2026,
 machine x86_64, domain (none)
 ```
 
-另一种是普通 **ELF core 文件**，`makedumpfile -E` 和 QEMU monitor 的 `dump-guest-memory` 都产出这种。信息一样，不压缩，`readelf` 能直接看。下面是对同一台 guest 用 monitor 抓的一份：
+另一种是 **ELF core 文件**，`makedumpfile -E` 和 QEMU monitor 的 `dump-guest-memory` 都可以生成。两类转储承载的信息一致，ELF 格式未做压缩，可直接用 `readelf` 解析。下面是通过 QEMU monitor 对同一虚拟机抓取的示例：
 
 ```
 Elf file type is CORE (Core file)
@@ -91,11 +91,11 @@ Program Headers:
 [...]
 ```
 
-一个 `NOTE` 段，七个 `LOAD` 段。`LOAD` 段是物理内存：第一段是 1MB 之前的空洞，第二段是 VGA/BIOS 区，剩下的段摊开 2GB 的 guest 内存。
+该文件包含 1 个 NOTE 段、7 个 LOAD 段。LOAD 段对应物理内存：第一段是 1MB 以内的内存空洞，第二段对应 VGA/BIOS 区域，其余段共同映射虚拟机 2GB 的物理内存。
 
-真正有意思的是 `NOTE` 段。`readelf -n` 能看到四个 `NT_PRSTATUS`，每个 vCPU 一个，各自带着那一刻的寄存器。`bt -a` 的四条栈就是从这里来的；另外还有 `NT_PRPSINFO` 和辅助向量。
+其中 NOTE 段是调试的关键。执行 `readelf -n` 可以看到 4 个 `NT_PRSTATUS` 条目，每个条目对应一个 vCPU，保存了崩溃瞬间的寄存器上下文；`bt -a` 输出的全部 CPU 调用栈，就来源于这里。除此之外还有 `NT_PRPSINFO` 与辅助向量信息。
 
-kdump 的 dump 比 monitor dump 多一样东西：**`VMCOREINFO`**，由崩溃时的内核写入。`crash` 从里面读出 release、build ID、页大小、`phys_base`，以及把虚拟地址换算成 dump 偏移所需的那些值。少了它，`crash` 会直接告诉你：
+kdump 生成的转储，相比 QEMU monitor 转储多了一项关键数据：**`VMCOREINFO`**，由内核在崩溃时写入。crash 会从中读取内核版本、Build ID、页大小、`phys_base`，以及虚拟地址转译为转储文件偏移所需的各项参数。如果缺失该信息，crash 会直接报错：
 
 ```
 crash: cannot read vmcoreinfo_data
@@ -104,11 +104,11 @@ crash: cannot read vmcoreinfo_data
        PANIC: ""
 ```
 
-后果不难想：没有 panic task，会话只能落在 `swapper/0` 上。dump 本身仍然有用——它是一份完整的内存快照——但得用户告诉 `crash` 相关信息，这正是 `--no_panic` 和 `--machdep` 的用武之地。
+带来的后果很直观：无法定位发生 panic 的任务，调试会话默认落在 `swapper/0` 进程上。转储文件本身仍是一份完整内存快照，依然可用，但需要手动向 crash 补充内核信息，这就是 `--no_panic` 和 `--machdep` 参数的用途。
 
-## banner 是一张核对表
+## banner信息: 一份核对清单
 
-每次打开会话都会先从上到下过一遍。
+每次打开 crash 会话时，首页 banner 信息自上而下逐项校验：
 
 - **`KERNEL`**：你给的 namelist，外加 `[TAINTED]`，因为内核装了树外模块。
 - **`DUMPFILE`**：内存镜像，外加 `[PARTIAL DUMP]`，因为这次用 `makedumpfile -d 31` 过滤过。free、cache、cache-private、user 页都没写进去。
@@ -119,7 +119,7 @@ crash: cannot read vmcoreinfo_data
 - **`MEMORY`**：2 GB。
 - **`PANIC`**：`"Oops: Oops: 0002 [#1] SMP" (check log for details)`，内核dmesg全文可用 `log` 命令查看。
 
-## 检查两个文件是否配套的简洁命令
+## 快速校验文件匹配关系的常用命令
 
 ```sh
 crash --osrelease <vmcore>     # dump 记录的 release 字符串
@@ -128,7 +128,7 @@ crash -g <vmlinux>             # 这个 namelist 里有没有 DWARF
 crash -t <vmlinux> <vmcore>    # dump 是什么时候抓的
 ```
 
-在本实验的 dump 上：
+在本实验的 dump 上执行效果：
 
 ```
 $ crash --osrelease ~/crash-lab/vmcore
@@ -145,13 +145,13 @@ $ crash -t ~/crash-lab/linux/vmlinux ~/crash-lab/vmcore
 Mon Oct 26 18:58:21 CST 2026
 ```
 
-前两条读的是 dump 里的 `VMCOREINFO`，它们只说明 dump 是什么，不说明 namelist 是什么。namelist 那一侧则要看 ELF note：
+前两条命令读取的是 vmcore 内的 `VMCOREINFO`，只能说明这份转储对应的内核信息，**不能用来验证 namelist 是否匹配**。而 namelist 的 Build ID 需要读取 ELF Note：
 
 ```sh
 readelf -n ~/crash-lab/linux/vmlinux | grep -A1 'Build ID'
 ```
 
-开篇那三个 namelist 和 dump 的 build ID ：
+开篇几份 namelist 和转储的 Build ID 对照：
 
 | 文件 | build ID | 版本串 |
 | --- | --- | --- |
@@ -162,7 +162,7 @@ readelf -n ~/crash-lab/linux/vmlinux | grep -A1 'Build ID'
 
 ## 内核模块
 
-栈里一出现 `[module]` 后缀，就是内核在加载时建的表。本实验的 `CONFIG_KALLSYMS_ALL` 是关的，于是：
+调用栈中出现 `[module]` 后缀，代表对应代码属于内核模块，相关记录保存在内核加载模块时维护的表中。本次实验内核关闭了 `CONFIG_KALLSYMS_ALL`，现象如下：
 
 ```
 crash> sym crashlab_trigger_write.cold
@@ -174,20 +174,20 @@ possible alternatives:
   (none found)
 ```
 
-因为它在文本段所以函数能解析；模块的全局变量 `crashlab_dir` 不能，因为它是数据：
+函数属于文本段，符号可以正常解析；但模块全局变量 `crashlab_dir` 在数据段，因此无法找到：
 
 ```
      MODULE       NAME         TEXT_BASE       SIZE  OBJECT FILE
 ffffffffa0201100  crashlab  ffffffffa0000000  12288  (not loaded)  [CONFIG_KALLSYMS]
 ```
 
-这个模块确实加载了、确实触发了故障，它的 `struct module` 在 `0xffffffffa0201100` 处读出来是 `MODULE_STATE_LIVE`。这里的 `(not loaded)` 是 `crash` 在说：因为没有数据符号所以它无法完成这个关联。
+这个模块确实已经加载、并且触发了崩溃，从地址 `0xffffffffa0201100` 读出的 `struct module` 状态为 `MODULE_STATE_LIVE`。这里的 `(not loaded)` 是 crash 的提示：缺少模块数据段符号，无法完成完整符号关联。
 
 ## 练习
 
-1. 一份 `vmcore`、三个候选 `vmlinux`，哪个是对的？用哪两条命令证明？
-2. 会话打开时只有 `WARNING: kernel version inconsistency between vmlinux and dumpfile`，之后每条命令看着都对。为什么这次会话仍不可信？在发布任何结论前你会做什么？
-3. 类型由哪个输入提供，内存内容由哪个提供？如果只有 `System.map`，你失去了什么？
+1. 一份 `vmcore`搭配三个候选 `vmlinux`，哪个是对的？用哪两条命令证明？
+2. 会话打开时只有 `WARNING: kernel version inconsistency between vmlinux and dumpfile`，后续所有调试命令输出看起来都正常，为什么这个会话依然不可信？在输出任何结论前，你会做哪些校验？
+3. 类型信息由哪一份输入提供？内存内容由哪一份输入提供？如果只有 `System.map`，会缺失哪些能力？
 
 答案与推理见 [`answers.md`](answers.md)。
 
@@ -195,14 +195,14 @@ ffffffffa0201100  crashlab  ffffffffa0000000  12288  (not loaded)  [CONFIG_KALLS
 
 | 命令 | 回答什么问题 |
 | --- | --- |
-| `crash --version`、`crash --buildinfo` | 这是哪个 crash，怎么编出来的 |
-| `crash --osrelease <vmcore>` | dump 自称是哪个 release |
-| `crash --build-id <vmcore>` | dump 自称是哪次构建 |
-| `crash -g <vmlinux>` | 这个 namelist 里有没有 DWARF |
-| `crash -t <vmlinux> <vmcore>` | dump 是什么时候抓的 |
-| `sys` | 以命令形式打印 banner |
-| `sym <name>` | 这个符号在哪个地址，来自哪里 |
-| `mod` | 哪些模块加载过，crash 能不能给它们的符号 |
+| `crash --version`、`crash --buildinfo` | 查看 crash 工具版本与编译信息 |
+| `crash --osrelease <vmcore>` | 查询转储记录的内核版本 |
+| `crash --build-id <vmcore>` | 查询转储记录的构建 ID |
+| `crash -g <vmlinux>` | 检查 vmlinux 是否包含 DWARF 调试信息 |
+| `crash -t <vmlinux> <vmcore>` | 获取转储捕获时间 |
+| `sys` | 在命令行重新打印 banner 信息 |
+| `sym <name>` | 查询指定符号的地址与归属 |
+| `mod` | 查看已加载模块，以及 crash 是否可以解析模块符号 |
 
 ---
 

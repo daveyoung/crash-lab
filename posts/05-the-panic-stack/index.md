@@ -202,6 +202,94 @@ crash> bt -l
 
 Module frames get lines only when the module's debug info is loaded (`mod -S`); without it you get the symbol and the offset, which is still enough to disassemble.
 
+## Interrupt context: the IRQ stack
+
+Everything above is a fault in process context. A second dump, from the same
+tree with the debug options on, gives the contrasting shape. Writing `irq` to the trigger arms a
+100 ms timer; the callback hits `BUG()`, and with `panic_on_oops=1` the panic is
+taken in hardirq context.
+
+The log says so before the stack does:
+
+```
+CRASHLAB: irq-mode fault, in_interrupt=16777216, in_hardirq=16777216
+kernel BUG at crashlab.c:62!
+Oops: invalid opcode: 0000 [#1] SMP
+CPU: 1 UID: 0 PID: 0 Comm: swapper/1 Kdump: loaded Tainted: G           O         7.3.0+ #17 PREEMPT(full)
+RIP: 0010:crashlab_irq_fn+0x25/0x30 [crashlab]
+```
+
+`in_interrupt` and `in_hardirq` are both `0x1000000` (`HARDIRQ_OFFSET`) in the
+preempt count, and the panic task is `swapper/1` — the task that happened to be
+idle when the timer fired, not a task that did anything.
+
+```
+crash> bt
+PID: 0        TASK: ffff888004a5b180  CPU/NUMA:    1/0    COMMAND: "swapper/1"
+ #0 [ffffc900001b4cd0] machine_kexec at ffffffff8111f568
+ #1 [ffffc900001b4ce0] __crash_kexec at ffffffff812166dc
+ #2 [ffffc900001b4d98] crash_kexec at ffffffff81216c0b
+ #3 [ffffc900001b4da8] oops_end at ffffffff810f89b3
+ #4 [ffffc900001b4dc8] do_trap at ffffffff810f5d01
+ #5 [ffffc900001b4e08] do_error_trap at ffffffff810f5f78
+ #6 [ffffc900001b4e50] exc_invalid_op at ffffffff818d425f
+ #7 [ffffc900001b4e70] asm_exc_invalid_op at ffffffff8100114a
+    [exception RIP: crashlab_irq_fn+37]
+    RIP: ffffffffa00000a5  RSP: ffffc900001b4f28  RFLAGS: 00010082
+    [...]
+ #8 [ffffc900001b4f20] crashlab_irq_fn at ffffffffa00000a5 [crashlab]
+ #9 [ffffc900001b4f28] __hrtimer_run_queues at ffffffff811f6a15
+#10 [ffffc900001b4f80] hrtimer_run_queues at ffffffff811f814d
+#11 [ffffc900001b4fa0] update_process_times at ffffffff811f550b
+#12 [ffffc900001b4fb8] tick_handle_periodic at ffffffff81208c66
+#13 [ffffc900001b4fd8] __sysvec_apic_timer_interrupt at ffffffff8111811a
+#14 [ffffc900001b4ff0] sysvec_apic_timer_interrupt at ffffffff818d5fa4
+--- <IRQ stack> ---
+#15 [ffffc9000016fe28] asm_sysvec_apic_timer_interrupt at ffffffff8100134a
+    [exception RIP: pv_native_safe_halt+23]
+    RIP: ffffffff818d6337  RSP: ffffc9000016fed8  RFLAGS: 00000246
+    [...]
+#16 [ffffc9000016fed8] default_idle at ffffffff818d8eb9
+#17 [ffffc9000016fee0] default_idle_call at ffffffff818d9188
+#18 [ffffc9000016fef8] do_idle at ffffffff8118e1c4
+#19 [ffffc9000016ff20] cpu_startup_entry at ffffffff8118e474
+#20 [ffffc9000016ff30] start_secondary at ffffffff81116ce6
+#21 [ffffc9000016ff40] common_startup_64 at ffffffff810f43c3
+```
+
+Read it as three parts:
+
+- **#0 to #7** is again the death procedure, this time for an invalid-opcode
+  trap (`do_trap` / `exc_invalid_op`) instead of a page fault.
+- **#8 to #14** is the interrupt handler chain: `tick_handle_periodic` →
+  `update_process_times` → `hrtimer_run_queues` → `__hrtimer_run_queues` →
+  the module's callback.
+- **`--- <IRQ stack> ---`** marks the stack switch. The handler ran on the
+  per-CPU IRQ stack; everything below the marker is the interrupted context,
+  which was already on that CPU's process stack: `pv_native_safe_halt` inside
+  `default_idle`, i.e. `swapper/1`.
+
+`bt -e` reports the exception frame that belongs to the *interrupted* context,
+not the frame of the BUG:
+
+```
+  KERNEL-MODE EXCEPTION FRAME AT: ffffc9000016fe28
+    [exception RIP: pv_native_safe_halt+23]
+    RIP: ffffffff818d6337  RSP: ffffc9000016fed8  RFLAGS: 00000246
+    [...]
+    CS: 0010  SS: 0018
+```
+
+That is the frame the CPU pushed when the timer interrupt arrived while the CPU
+was halted in the idle loop. The BUG's own `RIP` (`crashlab_irq_fn+37`) appears
+inline in `bt`, between #7 and #8.
+
+Two conclusions follow. First, `current` is the interrupted task, so the panic
+task here is `swapper/1`; blaming it for the crash would be wrong — it only had
+the bad luck to be idle. Second, a stack that changes stacks mid-trace is normal
+for hardirq work on x86_64, and the marker is how `crash` tells you where the
+boundary is.
+
 ## Process context, not interrupt context
 
 The shape of the stack answers the question before you reason about it:
@@ -287,8 +375,10 @@ Answers are in [`answers.md`](answers.md).
 ---
 
 **Versions.** `crash 9.0.3++` (gdb 16.2); kernel `7.3.0+` (x86_64, DWARF5,
-`UNWINDER_ORC=y`, `KALLSYMS_ALL=n`, no KASLR); dump `vmcore` from
-`makedumpfile -l -d 31`; panic produced by a NULL store with
-`panic_on_oops=1`. Addresses and PIDs come from one run.
+`UNWINDER_ORC=y`, no KASLR); dumps `vmcore` (NULL store) and `vmcore-irq`
+(`BUG()` in a timer callback), both from `makedumpfile -l -d 31`. The IRQ
+example comes from a later build of the same tree (`#17`) with the debug
+options enabled; the earlier sections are from `#16`. Addresses and PIDs come
+from one run each.
 
 Previous: [Symbols, types, addresses](../04-symbols-types-addresses/index.html) · Index: [all posts](../../index.html).
